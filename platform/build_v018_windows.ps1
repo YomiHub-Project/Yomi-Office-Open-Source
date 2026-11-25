@@ -12,6 +12,7 @@ param(
   [switch]$SkipWeb,
   [switch]$SkipAppx,
   [switch]$SkipMsi,
+  [switch]$AppxOnly,
   [string]$OnlyEdition
 )
 
@@ -47,7 +48,7 @@ $CSC_FX = 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 $CSC = if (Test-Path $CSC_ROSLYN) { $CSC_ROSLYN } else { $CSC_FX }
 $WIX = 'D:\yh\tools\wix314'
 
-function Say($m) { Write-Output ("[{0}] {1}" -f (Get-Date -Format HH:mm:ss), $m) }
+function Say($m) { Write-Host ("[{0}] {1}" -f (Get-Date -Format HH:mm:ss), $m) }
 
 New-Item -ItemType Directory -Force -Path $OUT_ROOT, $REL, $REL_WIN, $BLD | Out-Null
 
@@ -245,7 +246,7 @@ function Build-Msi($tag, $wixArch, $instDir, $msiOut) {
   [IO.File]::WriteAllText((Join-Path $stage 'installed_by_msi.txt'), "$APP_NAME $VER ($tag)`r`n", (New-Object Text.UTF8Encoding($false)))
 
   $filesWxs = Join-Path $work 'files.wxs'
-  & $heat dir $stage -nologo -ag -srd -sreg -sfrag -cg AppFiles -dr INSTALLFOLDER -var var.StageDir -out $filesWxs
+  & $heat dir $stage -nologo -ag -srd -sreg -sfrag -cg AppFiles -dr INSTALLFOLDER -var var.StageDir -out $filesWxs | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "heat.exe failed for $tag (exit=$LASTEXITCODE)" }
 
   Patch-HeatPerUser $filesWxs
@@ -333,14 +334,14 @@ function Build-Msi($tag, $wixArch, $instDir, $msiOut) {
 "@
   [IO.File]::WriteAllText($productWxs, $wxs, (New-Object Text.UTF8Encoding($false)))
 
-  & $candle -nologo -arch $wixArch "-dStageDir=$stage" -out "$obj\product.wixobj" $productWxs
+  & $candle -nologo -arch $wixArch "-dStageDir=$stage" -out "$obj\product.wixobj" $productWxs | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "candle.exe failed for $tag product.wxs (exit=$LASTEXITCODE)" }
-  & $candle -nologo -arch $wixArch "-dStageDir=$stage" -out "$obj\files.wixobj" $filesWxs
+  & $candle -nologo -arch $wixArch "-dStageDir=$stage" -out "$obj\files.wixobj" $filesWxs | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "candle.exe failed for $tag files.wxs (exit=$LASTEXITCODE)" }
 
   if (Test-Path $msiOut) { Remove-Item $msiOut -Force }
   # Suppress ICE60 (LO DLL language column warnings), ICE61 (AllowSameVersionUpgrades), ICE91 (per-user ProgramMenu/Desktop/LocalAppData warnings)
-  & $light -nologo -sice:ICE60 -sice:ICE61 -sice:ICE91 -out $msiOut "$obj\product.wixobj" "$obj\files.wixobj"
+  & $light -nologo -spdb -sice:ICE60 -sice:ICE61 -sice:ICE91 -out $msiOut "$obj\product.wixobj" "$obj\files.wixobj" | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "light.exe failed for $tag (exit=$LASTEXITCODE)" }
 }
 
@@ -398,49 +399,50 @@ function Build-Windows($edition, $arch, $cpu, $wixArch, $dist, $folder, $loDir) 
   return $inst
 }
 
-# == [1] Pack tool
-Say '== [1] Pack tool'
-& $CSC_FX /nologo /target:exe /platform:anycpu /optimize+ /codepage:65001 "/out:$BLD\Pack.exe" "$PLAT\windows\Pack.cs"
-if ($LASTEXITCODE -ne 0) { throw "Pack.cs compile failed" }
-
 $lay = @{}
 $w7  = Join-Path $REL_WIN 'Windows 7-8.1'
 $w10 = Join-Path $REL_WIN 'Windows 10-11'
 New-Item -ItemType Directory -Force -Path $w7, $w10 | Out-Null
 
-if (-not $OnlyEdition -or $OnlyEdition -eq 'Win7-8.1-x86') {
-  Say '== [2a] Win7-8.1-x86'
-  $lay['Win7-8.1-x86'] = Build-Windows 'Win7-8.1' 'x86' 'x86' 'x86' $DISTS.universal $w7 "$LO\trim\win7-x86"
-}
-if (-not $OnlyEdition -or $OnlyEdition -eq 'Win7-8.1-x64') {
-  Say '== [2b] Win7-8.1-x64'
-  $lay['Win7-8.1-x64'] = Build-Windows 'Win7-8.1' 'x64' 'x64' 'x64' $DISTS.universal $w7 "$LO\trim\win7-x64"
-}
-if (-not $OnlyEdition -or $OnlyEdition -eq 'Win10-11-x86') {
-  Say '== [3a] Win10-11-x86'
-  $lay['Win10-11-x86'] = Build-Windows 'Win10-11' 'x86' 'x86' 'x86' $DISTS.modern $w10 "$LO\trim\win7-x86"
-}
-if (-not $OnlyEdition -or $OnlyEdition -eq 'Win10-11-x64') {
-  Say '== [3b] Win10-11-x64'
-  $lay['Win10-11-x64'] = Build-Windows 'Win10-11' 'x64' 'x64' 'x64' $DISTS.modern $w10 "$LO\trim\win7-x64"
-}
-if (-not $OnlyEdition -or $OnlyEdition -eq 'Win10-11-ARM64') {
-  Say '== [3c] Win10-11-ARM64'
-  # ARM64: .NET Framework 4.8.1 runs AnyCPU natively on Windows 11 ARM64; WiX 3.14 uses -arch x64
-  $lay['Win10-11-ARM64'] = Build-Windows 'Win10-11' 'ARM64' 'anycpu' 'x64' $DISTS.modern $w10 "$LO\trim\w24-arm64"
-}
+if (-not $AppxOnly) {
+  Say '== [1] Pack tool'
+  & $CSC_FX /nologo /target:exe /platform:anycpu /optimize+ /codepage:65001 "/out:$BLD\Pack.exe" "$PLAT\windows\Pack.cs" | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "Pack.cs compile failed" }
 
-if (-not $OnlyEdition) {
-  Say '== [4] Universal (All-AnyCPU) -> output\v0.1.8\Windows'
-  $uni = Build-Windows 'All' 'AnyCPU' 'anycpu' 'x86' $DISTS.universal $BLD "$LO\trim\win7-x64"
-  Copy-Item "$BLD\$APP_SLUG-$VER-All-AnyCPU-Setup.exe"     (Join-Path $REL_WIN "$APP_SLUG-$VER-Setup.exe") -Force
-  Copy-Item "$BLD\$APP_SLUG-$VER-All-AnyCPU-portable.zip"  (Join-Path $REL_WIN "$APP_SLUG-$VER-portable.zip") -Force
-  if (-not $SkipMsi -and (Test-Path "$BLD\$APP_SLUG-$VER-All-AnyCPU.msi")) {
-    Copy-Item "$BLD\$APP_SLUG-$VER-All-AnyCPU.msi"         (Join-Path $REL_WIN "$APP_SLUG-$VER.msi") -Force
+  if (-not $OnlyEdition -or $OnlyEdition -eq 'Win7-8.1-x86') {
+    Say '== [2a] Win7-8.1-x86'
+    $lay['Win7-8.1-x86'] = Build-Windows 'Win7-8.1' 'x86' 'x86' 'x86' $DISTS.universal $w7 "$LO\trim\win7-x86"
+  }
+  if (-not $OnlyEdition -or $OnlyEdition -eq 'Win7-8.1-x64') {
+    Say '== [2b] Win7-8.1-x64'
+    $lay['Win7-8.1-x64'] = Build-Windows 'Win7-8.1' 'x64' 'x64' 'x64' $DISTS.universal $w7 "$LO\trim\win7-x64"
+  }
+  if (-not $OnlyEdition -or $OnlyEdition -eq 'Win10-11-x86') {
+    Say '== [3a] Win10-11-x86'
+    $lay['Win10-11-x86'] = Build-Windows 'Win10-11' 'x86' 'x86' 'x86' $DISTS.modern $w10 "$LO\trim\win7-x86"
+  }
+  if (-not $OnlyEdition -or $OnlyEdition -eq 'Win10-11-x64') {
+    Say '== [3b] Win10-11-x64'
+    $lay['Win10-11-x64'] = Build-Windows 'Win10-11' 'x64' 'x64' 'x64' $DISTS.modern $w10 "$LO\trim\win7-x64"
+  }
+  if (-not $OnlyEdition -or $OnlyEdition -eq 'Win10-11-ARM64') {
+    Say '== [3c] Win10-11-ARM64'
+    # ARM64: .NET Framework 4.8.1 runs AnyCPU natively on Windows 11 ARM64; WiX 3.14 uses -arch x64
+    $lay['Win10-11-ARM64'] = Build-Windows 'Win10-11' 'ARM64' 'anycpu' 'x64' $DISTS.modern $w10 "$LO\trim\w24-arm64"
+  }
+
+  if (-not $OnlyEdition) {
+    Say '== [4] Universal (All-AnyCPU) -> output\v0.1.8\Windows'
+    $uni = Build-Windows 'All' 'AnyCPU' 'anycpu' 'x86' $DISTS.universal $BLD "$LO\trim\win7-x64"
+    Copy-Item "$BLD\$APP_SLUG-$VER-All-AnyCPU-Setup.exe"     (Join-Path $REL_WIN "$APP_SLUG-$VER-Setup.exe") -Force
+    Copy-Item "$BLD\$APP_SLUG-$VER-All-AnyCPU-portable.zip"  (Join-Path $REL_WIN "$APP_SLUG-$VER-portable.zip") -Force
+    if (-not $SkipMsi -and (Test-Path "$BLD\$APP_SLUG-$VER-All-AnyCPU.msi")) {
+      Copy-Item "$BLD\$APP_SLUG-$VER-All-AnyCPU.msi"         (Join-Path $REL_WIN "$APP_SLUG-$VER.msi") -Force
+    }
   }
 }
 
-if (-not $SkipAppx -and -not $OnlyEdition) {
+if ((-not $SkipAppx -and -not $OnlyEdition) -or $AppxOnly) {
   Say '== [5] APPX x86/x64/arm64 + APPXBUNDLE (Windows 10 1809+ / 11)'
   Add-Type -AssemblyName System.Drawing
   $pfx = Join-Path $PROJ 'scripts\dev_cert\OfficeOpenSourceDev.pfx'
@@ -477,7 +479,9 @@ if (-not $SkipAppx -and -not $OnlyEdition) {
     $l = Join-Path $BLD "appx_$arch"
     if (Test-Path $l) { Remove-Item $l -Recurse -Force }
     New-Item -ItemType Directory -Force -Path "$l\Assets" | Out-Null
-    Copy-Item "$($lay[$sp.layKey])\*" $l -Recurse
+    $srcLay = if ($lay.ContainsKey($sp.layKey)) { $lay[$sp.layKey] } else { Join-Path $BLD "layout_$($sp.layKey)" }
+    if (-not (Test-Path (Join-Path $srcLay 'OfficeOpenSource.exe'))) { throw "Missing layout for $($sp.layKey): $srcLay" }
+    Copy-Item "$srcLay\*" $l -Recurse
     Make-Asset 50 50 "$l\Assets\StoreLogo.png"
     Make-Asset 150 150 "$l\Assets\Square150x150Logo.png"
     Make-Asset 44 44 "$l\Assets\Square44x44Logo.png"
@@ -553,7 +557,7 @@ $manifest = [ordered]@{
 [IO.File]::WriteAllText((Join-Path $REL_WIN 'version.json'), ($manifest | ConvertTo-Json -Depth 4), (New-Object Text.UTF8Encoding($false)))
 
 $shaLines = @("# SHA256 Checksums — $APP_NAME v$VER (Windows)", "", "Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')", "", "| File | Size (bytes) | SHA256 |", "|---|---:|---|")
-Get-ChildItem $REL_WIN -Recurse -File | Where-Object { $_.Name -ne 'SHA256_Windows_v0.1.8.md' } | Sort-Object FullName | ForEach-Object {
+Get-ChildItem $REL_WIN -Recurse -File | Where-Object { $_.Name -ne 'SHA256_Windows_v0.1.8.md' -and $_.Extension -ne '.wixpdb' } | Sort-Object FullName | ForEach-Object {
   $relPath = $_.FullName.Substring($REL_WIN.Length + 1).Replace('\', '/')
   $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash
   $shaLines += "| $relPath | $($_.Length) | ``$hash`` |"

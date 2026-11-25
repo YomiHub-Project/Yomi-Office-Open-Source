@@ -96,7 +96,10 @@ Chủ dự án yêu cầu tạo và duy trì tài liệu này ngày 25/10/2026. 
 | Tích hợp Free Claude Code vào cài đặt A.I | **Xong** | Proxy `http://127.0.0.1:8082/v1/messages`, token tùy chọn, địa chỉ sửa được (AGPL: chỉ kết nối, không nhúng mã). |
 
 ### D. Windows (Antigravity)
-_(hợp nhất từ `v018\coord\TIEN_DO_antigravity.md` khi hoàn tất)_
+- Host Windows (`v018\src\platform\windows\*.cs`, 9 tệp C#): đổi tên/logo, `/api/info` trả `"msi"`, cập nhật qua `msiexec /i … /passive`, `POST /api/scan_office`, Free Claude Code, `ListGitHub`; biên dịch Roslyn `csc.exe` 0 lỗi.
+- `build_v018_windows.ps1` (UTF-8 BOM, `$PROJ` động): sửa WiX `CNDL0230` (GUID MD5 cho KeyPath HKCU), `CNDL0117`, `-sice:ICE60`; loader ARM64; thêm bản Universal (All-AnyCPU → `Yomi-Office-Open-Source-0.1.8-Setup.exe/.msi/-portable.zip`, không ghi edition, giống quy ước bản phổ thông v0.1.7).
+- Tiến độ lúc 17:26: đã có Win7-8.1 x86/x64, Win10-11 x86/x64/ARM64, Universal (Setup + .msi + portable); đang đóng gói lại các bản build trước 16:20 (`licenses.txt` cũ) và `.appxbundle`. Kiểm thử cài đặt + so sánh 23 tệp với MS Office: chờ (`test_compare_v018.ps1`).
+_(Kết quả kiểm thử Windows sẽ hợp nhất khi có `coord\WIN_DONE.txt`.)_
 
 ### E. Kiểm thử thiết bị thật Samsung Galaxy Note 9 (Antigravity)
 Thiết bị: SM-N960N, Android 10 (API 29), arm64-v8a, serial `281038ac31217ece`. Nguồn: `v018\coord\TIEN_DO_antigravity.md`.
@@ -117,4 +120,10 @@ Thiết bị: SM-N960N, Android 10 (API 29), arm64-v8a, serial `281038ac31217ece
 
 
 ### F. Phát hành GitHub
-_(ghi khi hoàn tất)_
+| Lúc | Đợt | Kết quả |
+|---|---|---|
+| 16:47 | Đợt 1 (job 070) | Đẩy mã nguồn `9945e17` (257 tệp); tạo Release v0.1.8 (id 457911185); 17/17 tệp (9 APK + 8 bộ cài Windows); `releases/latest` = v0.1.8 |
+| 17:04 | Đợt 1b (job 093, chủ dự án yêu cầu) | Commit `4ccaccb` (README, ghi chú phát hành + kỹ thuật); cập nhật nội dung Release; thêm Win10-11-x64 Setup/portable, Win10-11-x86.msi → **20/20 tệp, 2.96 GB**; GitHub Pages bật (`main /docs`) |
+| chờ | Đợt 2 (job 090, tự chạy khi có `WIN_DONE.txt`) | `version.json` + `SHA256_v0.1.8.md`, các bộ cài Windows còn lại/đóng gói lại, `.appxbundle` |
+
+`publish_v018.ps1` mới: `-MinAgeSec` bỏ qua tệp vừa ghi (tránh tải tệp đang build); khi Release đã có thì cập nhật nội dung theo `RELEASE_NOTES_v0.1.8.md`; tải lại tệp khi kích thước khác.
