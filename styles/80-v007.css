@@ -1,0 +1,64 @@
+/* v0.0.7 — A.I web bar, e-book reader, CamScanner, PDF annotate / outline */
+.ai-webbar { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.ai-webbar .btn { font-size: 12px; padding: 4px 8px; }
+
+/* ---------------- reader */
+.reader { position: fixed; inset: 0; top: 0; left: 0; right: 0; bottom: 0; z-index: 1500; display: flex; flex-direction: column; background: #fff; color: #222; font-family: var(--ui-font); }
+.reader.rd-sepia { background: #f4ecd8; color: #4b3a26; }
+.reader.rd-dark { background: #1d1f21; color: #d6d6d6; }
+.rd-bar { display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-bottom: 1px solid rgba(0,0,0,.12); background: rgba(255,255,255,.6); }
+.rd-dark .rd-bar { background: rgba(0,0,0,.25); border-color: rgba(255,255,255,.1); }
+.rd-title { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding: 0 8px; }
+.rd-b { background: none; border: 0; color: inherit; width: 36px; height: 36px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.rd-b:hover { background: rgba(127,127,127,.18); }
+.rd-prog { font-size: 12px; opacity: .7; min-width: 38px; text-align: right; }
+.rd-body { flex: 1; display: flex; min-height: 0; position: relative; }
+.rd-side { width: 300px; max-width: 80vw; overflow: auto; border-right: 1px solid rgba(127,127,127,.25); display: none; background: inherit; }
+.rd-side.on { display: block; position: absolute; top: 0; bottom: 0; left: 0; z-index: 2; box-shadow: 4px 0 18px rgba(0,0,0,.15); }
+.rd-side-h { padding: 10px 12px; display: flex; border-bottom: 1px solid rgba(127,127,127,.2); }
+.rd-toc-i { display: block; width: 100%; text-align: left; background: none; border: 0; color: inherit; padding: 8px 10px; cursor: pointer; font-size: 14px; }
+.rd-toc-i:hover { background: rgba(127,127,127,.15); }
+.rd-page { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; }
+.rd-content { max-width: 760px; margin: 0 auto; padding: 24px 28px 80px; }
+.rd-content img { max-width: 100%; height: auto; display: block; margin: 10px auto; }
+.rd-content p { margin: 0 0 .8em; text-align: justify; }
+.rd-content .rd-poem { margin: 1em 2em; font-style: italic; }
+.rd-content .rd-hit { background: rgba(255,212,0,.45); }
+.rd-paged .rd-page { overflow-x: auto; overflow-y: hidden; }
+.rd-paged .rd-content { max-width: none; height: calc(100% - 20px); -webkit-column-width: 100vw; column-width: 100vw; -webkit-column-gap: 0; column-gap: 0; padding: 20px 0 0; box-sizing: border-box; }
+.rd-paged .rd-ch > * { padding-left: max(28px, calc((100vw - 760px) / 2)); padding-right: max(28px, calc((100vw - 760px) / 2)); }
+.rd-nav { position: absolute; bottom: 10px; right: 12px; display: flex; gap: 6px; }
+.rd-nav .rd-b { background: rgba(127,127,127,.18); }
+
+/* ---------------- scanner */
+.scanner { position: fixed; inset: 0; top: 0; left: 0; right: 0; bottom: 0; z-index: 1500; background: var(--bg, #f3f3f3); display: flex; flex-direction: column; font-family: var(--ui-font); }
+.scan-bar { display: flex; align-items: center; gap: 6px; padding: 8px 10px; background: var(--panel, #fff); border-bottom: 1px solid var(--line, #e0e0e0); flex-wrap: wrap; }
+.scan-main { flex: 1; display: flex; min-height: 0; }
+.scan-thumbs { width: 140px; overflow: auto; border-right: 1px solid var(--line, #e0e0e0); background: var(--panel, #fff); padding: 8px; }
+.scan-th { position: relative; margin-bottom: 8px; border: 2px solid transparent; border-radius: 6px; cursor: pointer; text-align: center; }
+.scan-th.on { border-color: #0f6cbd; }
+.scan-th canvas { max-width: 100%; display: block; margin: 0 auto; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+.scan-th span { position: absolute; left: 4px; top: 2px; font-size: 11px; background: rgba(0,0,0,.55); color: #fff; padding: 0 5px; border-radius: 8px; }
+.scan-center { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.scan-stage { flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 10px; }
+.scan-empty { text-align: center; color: var(--text, #333); max-width: 460px; }
+.scan-crop { position: relative; display: inline-block; touch-action: none; }
+.scan-crop canvas { display: block; box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+.scan-h { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; background: rgba(15,108,189,.25); border: 3px solid #0f6cbd; cursor: move; touch-action: none; }
+.scan-result { max-width: 100%; max-height: calc(100vh - 220px); box-shadow: 0 2px 10px rgba(0,0,0,.25); background: #fff; }
+.scan-tools { padding: 8px 10px; background: var(--panel, #fff); border-top: 1px solid var(--line, #e0e0e0); }
+.scan-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0; }
+@media (max-width: 640px) { .scan-thumbs { width: 84px; } .scan-bar .btn { font-size: 12px; padding: 4px 6px; } }
+
+/* ---------------- PDF annotate / outline / search */
+.pdf-ann-dlg .dlg-body { max-height: calc(100vh - 140px); overflow: auto; }
+.pdf-ann-tools { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px; align-items: center; }
+.pdf-ann-tools .btn { font-size: 12px; padding: 4px 7px; }
+.pdf-ann-nav { display: flex; gap: 8px; align-items: center; justify-content: center; margin: 4px 0; }
+.pdf-ann-wrap { position: relative; display: inline-block; margin: 0 auto; box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+.pdf-ann-cv { display: block; }
+.pdf-ann-over { position: absolute; left: 0; top: 0; cursor: crosshair; touch-action: none; }
+.pdf-outline { max-height: 60vh; overflow: auto; }
+.pdf-ol-i { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 6px 8px; cursor: pointer; font-size: 13px; color: inherit; border-radius: 4px; }
+.pdf-ol-i:hover { background: rgba(127,127,127,.15); }
+.pdf-textlayer span.pdf-hit { background: rgba(255,212,0,.5); color: transparent; }

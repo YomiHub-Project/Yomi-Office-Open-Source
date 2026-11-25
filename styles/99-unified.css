@@ -1,0 +1,66 @@
+/* v0.1.7: Web ribbon drawn with the native editor's metrics (Ribbon.cs): tab row 30px, card body 98px, 32px large icons,
+   16px small icons on 24px rows, 11px grey group labels, accent-coloured bold selected tab with a 3px underline */
+.ribbon { background: #f3f3f3; border-bottom: 0; box-shadow: none; padding: 0 4px 4px; }
+.rb-tabs { height: 30px; background: #f3f3f3; padding: 0 4px; align-items: center; -webkit-box-align: center; }
+.rb-tab, .rb-tab.rb-file { height: 26px; padding: 0 10px; margin-right: 2px; font-size: 12px; color: #242424; background: transparent; border-radius: 4px; font-weight: 400; }
+.rb-tab.rb-file, .rb-tab.rb-file:hover { color: #242424; background: transparent; border-color: transparent; }
+.rb-tab:hover, .rb-tab.rb-file:hover { background: #e6e6e6; }
+.rb-tab.on { background: transparent; font-weight: 700; color: var(--accent, #185abd); }
+.rb-tab.on:after { left: 50%; right: auto; width: calc(100% - 20px); -webkit-transform: translateX(-50%); transform: translateX(-50%); bottom: 0; height: 3px; border-radius: 1px; background: var(--accent, #185abd); }
+.k-word .rb-tab.on, .k-excel .rb-tab.on, .k-ppt .rb-tab.on { background: transparent; }
+.rb-body { height: 98px; background: #fbfbfb; border: 1px solid #e0e0e0; border-radius: 7px; box-shadow: 0 1px 2px rgba(0,0,0,.07); margin-top: 2px; overflow-y: hidden; }
+.rb-strip { height: 96px; padding-left: 10px; }
+.rb-group { position: relative; padding: 2px 4px 18px; border-right: 1px solid #e0e0e0; border-image: linear-gradient(to bottom, transparent 6px, #e0e0e0 6px, #e0e0e0 calc(100% - 6px), transparent calc(100% - 6px)) 1; }
+.rb-glabel { position: absolute; left: 0; right: 0; bottom: 1px; height: 16px; line-height: 16px; font-size: 11px; color: #616161; text-align: center; white-space: nowrap; }
+.rb-launch { position: absolute; right: 2px; bottom: 2px; width: 12px; height: 12px; color: #616161; }
+.rb-items { height: 76px; align-items: flex-start; -webkit-box-align: start; }
+.rb-btn { min-height: 22px; height: 22px; padding: 0 4px; border-radius: 4px; font-size: 12px; color: #242424; }
+.rb-btn:hover { background: #e6e6e6; }
+.rb-btn:active { background: #d4d4d4; }
+.rb-btn.on { background: #dadada; box-shadow: inset 0 0 0 1px #b8b8b8; }
+.rb-btn .ic { width: 16px; height: 16px; }
+.rb-btn.big { height: 74px; min-width: 44px; padding: 4px 3px 2px; flex-direction: column; -webkit-box-orient: vertical; justify-content: flex-start; -webkit-box-pack: start; }
+.rb-btn.big .ic { width: 32px; height: 32px; margin-bottom: 3px; }
+.rb-btn.big .rb-lbl { white-space: normal; max-width: 76px; line-height: 14px; font-size: 12px; text-align: center; }
+.rb-split.big { height: 74px; }
+.rb-col { justify-content: flex-start; -webkit-box-pack: start; }
+.rb-col > .rb-btn, .rb-col > .rb-split, .rb-row { height: 24px; min-height: 24px; }
+.ic.nic svg { display: block; }
+.rb-tail .rb-comments, .rb-tail .rb-editmode { height: 24px; padding: 0 8px; background: #fff; border: 1px solid #c8c8c8; border-radius: 4px; font-size: 12px; color: #242424; margin-left: 8px; }
+.rb-tail .rb-comments:hover, .rb-tail .rb-editmode:hover { background: #e6e6e6; }
+.rb-tail .rb-share { height: 24px; min-width: 88px; padding: 0 8px; border-radius: 4px; font-weight: 700; font-size: 12px; color: #fff; background: var(--accent, #185abd); border: 0; margin-left: 8px; }
+/* title bar = native TitleBar (Chrome.cs) */
+.titlebar { height: 40px; background: #f3f3f3; }
+.tb-home img { display: none; }
+.tb-state { font-size: 12px; color: #616161; margin-left: 4px; }
+.tb-search { border-radius: 4px; border: 1px solid #c8c8c8; background: #fff; }
+.tb-saved { color: #616161; margin-left: 4px; }
+.dex-titlebar-tools { display: none !important; }
+.ribbon { position: relative; }
+.rb-tab.rb-file, .k-word .rb-tab.rb-file, .k-excel .rb-tab.rb-file, .k-ppt .rb-tab.rb-file, .k-pdf .rb-tab.rb-file { background: transparent !important; color: #242424 !important; border: 0 !important; }
+.rb-tab.rb-file:hover { background: #e6e6e6 !important; }
+.rb-tail .rb-collapse { position: absolute; right: 12px; top: 112px; width: 20px; height: 18px; color: #616161; border-radius: 3px; z-index: 2; }
+.rb-tail .rb-collapse:hover { background: #e6e6e6; }
+/* large split button (Dán, Bố trí…): icon, label, ▾ in one 74px column like the native ribbon */
+.rb-split.big { flex-direction: column; -webkit-box-orient: vertical; align-items: center; height: 74px; border-radius: 4px; }
+.rb-split.big > .rb-btn.big { height: 54px; padding-bottom: 0; }
+.rb-split.big > .rb-arrow { height: 18px; width: 100%; border-radius: 0 0 4px 4px; }
+.rb-split.big:hover { background: #e6e6e6; }
+.rb-split.big > .rb-btn.big .rb-lbl { margin-top: 0; }
+/* collapsed group */
+.rb-cbtn { display: none; }
+.rb-group.collapsed > .rb-items { display: none; }
+.rb-group.collapsed > .rb-cbtn { display: flex; display: -webkit-box; flex-direction: column; -webkit-box-orient: vertical; align-items: center; -webkit-box-align: center; justify-content: flex-start; width: 100%; height: 74px; padding-top: 4px; border-radius: 4px; color: #616161; }
+.rb-group.collapsed > .rb-cbtn:hover { background: #e6e6e6; }
+.rb-group.collapsed > .rb-cbtn .dd { margin-top: 14px; }
+.rb-group.collapsed .rb-launch { display: none; }
+.rb-pop { position: fixed; z-index: 3000; height: auto; padding: 4px 6px; background: #fbfbfb; border: 1px solid #c8c8c8; border-radius: 7px; box-shadow: 0 6px 18px rgba(0,0,0,.16); }
+.rb-pop > .rb-group { border: 0; padding: 2px; }
+.rb-pop .rb-items { display: flex; display: -webkit-box; height: 76px; }
+/* galleries drawn like the native gallery: white box, 78px cells, preview + name, scroll column */
+.rb-gallery { background: #fff; border: 1px solid #d0d0d0; border-radius: 0; height: 70px; margin-top: 2px; }
+.rb-gal-item { width: 76px; min-width: 76px; height: 64px; margin: 2px 0 0 2px; border: 1px solid transparent; border-radius: 0; font-size: 11px; }
+.rb-gal-item:hover, .rb-gal-item.on { background: #e6e6e6; border-color: #b0b0b0; }
+.rb-gal-more { width: 16px; background: #f5f5f5; }
+.rb-split.big .rb-btn .rb-lbl { display: block; }
+.statusbar .dex-sb-pill, .statusbar [class*="dex"] { display: none !important; }

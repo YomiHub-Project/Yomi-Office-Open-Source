@@ -1,0 +1,314 @@
+/* Office Open Source v0.1.5 Styles - Performance Optimization, UI Polish, Mouse & DeX Refinements */
+
+/* 1. Global High-DPI Font & Subpixel Rendering */
+body, input, button, select, textarea {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* 2. Enhanced Mouse Cursor Precision */
+.cell-selected {
+  cursor: cell !important;
+}
+.col-header, .grid-col-resizer {
+  cursor: col-resize !important;
+}
+.row-header, .grid-row-resizer {
+  cursor: row-resize !important;
+}
+.fill-handle {
+  cursor: crosshair !important;
+}
+.slide-thumb, .shape-item {
+  cursor: grab;
+}
+.slide-thumb:active, .shape-item:active {
+  cursor: grabbing;
+}
+.ruler-guide, .ruler-marker {
+  cursor: ew-resize !important;
+}
+
+/* 3. Excel Page Break & Dotted Separators */
+.page-break-line-h {
+  border-bottom: 2px dashed #0078d4 !important;
+  pointer-events: none;
+}
+.page-break-line-v {
+  border-right: 2px dashed #0078d4 !important;
+  pointer-events: none;
+}
+.page-break-watermark {
+  position: absolute;
+  font-size: 48px;
+  font-weight: 700;
+  color: rgba(0, 120, 212, 0.08);
+  user-select: none;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 4. PowerPoint Animation & Transition Visualizer */
+.anim-preview-box {
+  transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.3s ease;
+}
+.anim-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #c43e1c;
+  color: #fff;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+}
+
+/* 5. Android DeX Mode Enhanced Window & External Display Controls */
+.dex-window {
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.28);
+  border: 1px solid rgba(255,255,255,0.18);
+  overflow: hidden;
+}
+.dex-window-header {
+  height: 36px;
+  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  user-select: none;
+}
+.dex-tv-cast-banner {
+  background: #0f6cbd;
+  color: #ffffff;
+  padding: 6px 14px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 4px;
+  margin: 6px 12px;
+}
+
+/* 6. High-Contrast Ribbon Hover & Focus States */
+.ribbon-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 3px;
+}
+.ribbon-btn:active {
+  background: rgba(0, 0, 0, 0.12);
+}
+.ribbon-tab.active {
+  font-weight: 600;
+  border-bottom: 2px solid var(--accent-color, #0f6cbd);
+}
+
+/* 7. Document Scanner & CamScanner Overlay Filters */
+.camscanner-crop-point {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #ffffff;
+  background: #0f6cbd;
+  border-radius: 50%;
+  cursor: move;
+  box-shadow: 0 0 6px rgba(0,0,0,0.5);
+}
+.camscanner-filter-preview {
+  border-radius: 4px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.camscanner-filter-preview:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* 8. DeX Desktop & TV 4K Multi-Window Workspace Launcher Banner on Start Screen */
+.dex-start-banner {
+  margin: 16px 0 20px 0;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.94) 0%, rgba(30, 41, 59, 0.94) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 12px;
+  padding: 16px 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+  color: #f8fafc;
+}
+.dex-start-banner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dex-banner-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.dex-banner-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+}
+.dex-banner-desc {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 2px;
+  line-height: 1.4;
+}
+.dex-banner-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.dex-banner-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+}
+
+/* 9. DeX Window Titlebar Snap Tools */
+.dex-titlebar-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 6px;
+  padding-right: 8px;
+  border-right: 1px solid rgba(0, 0, 0, 0.12);
+}
+body.dark .dex-titlebar-tools {
+  border-right-color: rgba(255, 255, 255, 0.15);
+}
+
+/* 10. Tiled Window Modes */
+body.dex-tiled-left #app {
+  position: fixed !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: 50% !important;
+  height: 100% !important;
+  border-right: 2px solid #0f6cbd !important;
+  box-shadow: 4px 0 20px rgba(0,0,0,0.3) !important;
+}
+body.dex-tiled-right #app {
+  position: fixed !important;
+  left: 50% !important;
+  top: 0 !important;
+  width: 50% !important;
+  height: 100% !important;
+  border-left: 2px solid #0f6cbd !important;
+  box-shadow: -4px 0 20px rgba(0,0,0,0.3) !important;
+}
+body.dex-tiled-window #app {
+  position: fixed !important;
+  left: 8% !important;
+  top: 6% !important;
+  width: 84% !important;
+  height: 88% !important;
+  border-radius: 12px !important;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4) !important;
+  border: 1px solid #0f6cbd !important;
+}
+
+/* 11. Toàn diện Safe Area & Chống Che Khuất Thanh Thông Báo / Thanh Điều Hướng (v0.1.5) */
+/* 11.1. DeX Desktop Taskbar & Start Menu */
+body:not(.anti-obscuration-off) .dex-desktop-taskbar {
+  min-height: calc(48px + var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px)) !important;
+  height: calc(48px + var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px)) !important;
+  padding-bottom: calc(var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px)) !important;
+  padding-left: calc(12px + var(--safe-left, 0px)) !important;
+  padding-right: calc(12px + var(--safe-right, 0px)) !important;
+  box-sizing: border-box !important;
+}
+
+body:not(.anti-obscuration-off) .dex-start-menu {
+  bottom: calc(56px + var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px)) !important;
+  left: calc(12px + var(--safe-left, 0px)) !important;
+  max-height: calc(100vh - 72px - var(--safe-top, 0px) - var(--safe-bottom, 0px) - var(--extra-safe-top, 0px) - var(--extra-safe-bottom, 0px)) !important;
+  box-sizing: border-box !important;
+}
+
+body:not(.anti-obscuration-off) .dex-desktop-screen {
+  padding-top: calc(var(--safe-top, 0px) + var(--extra-safe-top, 0px)) !important;
+  box-sizing: border-box !important;
+}
+
+body:not(.anti-obscuration-off) .dex-desktop-icons {
+  top: calc(24px + var(--safe-top, 0px) + var(--extra-safe-top, 0px)) !important;
+  left: calc(24px + var(--safe-left, 0px)) !important;
+}
+
+/* 11.2. Virtual Trackpad - Chống đè phím chuột & header */
+body:not(.anti-obscuration-off) .dex-trackpad-header {
+  min-height: calc(48px + var(--safe-top, 0px) + var(--extra-safe-top, 0px)) !important;
+  height: calc(48px + var(--safe-top, 0px) + var(--extra-safe-top, 0px)) !important;
+  padding-top: calc(var(--safe-top, 0px) + var(--extra-safe-top, 0px)) !important;
+  padding-left: calc(16px + var(--safe-left, 0px)) !important;
+  padding-right: calc(16px + var(--safe-right, 0px)) !important;
+  box-sizing: border-box !important;
+}
+
+body:not(.anti-obscuration-off) .dex-trackpad-btn-row {
+  min-height: calc(70px + var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px)) !important;
+  height: calc(70px + var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px)) !important;
+  padding-bottom: calc(var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px)) !important;
+  padding-left: calc(var(--safe-left, 0px)) !important;
+  padding-right: calc(var(--safe-right, 0px)) !important;
+  box-sizing: border-box !important;
+}
+
+/* 11.3. Presenter Console - Chống che khuất thanh diễn giả */
+body:not(.anti-obscuration-off) .dex-presenter-topbar {
+  min-height: calc(46px + var(--safe-top, 0px) + var(--extra-safe-top, 0px)) !important;
+  padding-top: calc(var(--safe-top, 0px) + var(--extra-safe-top, 0px)) !important;
+  padding-left: calc(14px + var(--safe-left, 0px)) !important;
+  padding-right: calc(14px + var(--safe-right, 0px)) !important;
+  box-sizing: border-box !important;
+}
+
+/* 11.4. Reader & Scanner Fullscreen Overlays */
+body:not(.anti-obscuration-off) .reader .rd-bar {
+  padding-top: calc(8px + var(--safe-top, 0px) + var(--extra-safe-top, 0px)) !important;
+  padding-left: calc(8px + var(--safe-left, 0px)) !important;
+  padding-right: calc(8px + var(--safe-right, 0px)) !important;
+  box-sizing: border-box !important;
+}
+
+body:not(.anti-obscuration-off) .reader .rd-nav {
+  bottom: calc(10px + var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px)) !important;
+  right: calc(12px + var(--safe-right, 0px)) !important;
+}
+
+body:not(.anti-obscuration-off) .scanner .scan-bar {
+  padding-top: calc(8px + var(--safe-top, 0px) + var(--extra-safe-top, 0px)) !important;
+  padding-left: calc(10px + var(--safe-left, 0px)) !important;
+  padding-right: calc(10px + var(--safe-right, 0px)) !important;
+  box-sizing: border-box !important;
+}
+
+body:not(.anti-obscuration-off) .scanner .scan-tools {
+  padding-bottom: calc(8px + var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px)) !important;
+  padding-left: calc(10px + var(--safe-left, 0px)) !important;
+  padding-right: calc(10px + var(--safe-right, 0px)) !important;
+  box-sizing: border-box !important;
+}
+
+
+/* v0.1.6 fix: secondary DeX banner buttons were white text on a white button */
+.dex-banner-actions .btn:not(.primary) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+.dex-banner-actions .btn:not(.primary):hover { background: rgba(255, 255, 255, 0.2); }

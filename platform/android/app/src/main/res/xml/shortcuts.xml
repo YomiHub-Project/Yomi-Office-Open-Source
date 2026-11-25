@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+  <shortcut android:shortcutId="word" android:enabled="true" android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="@string/sc_word" android:shortcutLongLabel="@string/sc_word">
+    <intent android:action="android.intent.action.VIEW" android:targetPackage="com.officeopensource.office_open_source" android:targetClass="com.officeopensource.office_open_source.MainActivity"><extra android:name="hash" android:value="new=word" /></intent></shortcut>
+  <shortcut android:shortcutId="excel" android:enabled="true" android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="@string/sc_excel" android:shortcutLongLabel="@string/sc_excel">
+    <intent android:action="android.intent.action.VIEW" android:targetPackage="com.officeopensource.office_open_source" android:targetClass="com.officeopensource.office_open_source.MainActivity"><extra android:name="hash" android:value="new=excel" /></intent></shortcut>
+  <shortcut android:shortcutId="ppt" android:enabled="true" android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="@string/sc_ppt" android:shortcutLongLabel="@string/sc_ppt">
+    <intent android:action="android.intent.action.VIEW" android:targetPackage="com.officeopensource.office_open_source" android:targetClass="com.officeopensource.office_open_source.MainActivity"><extra android:name="hash" android:value="new=ppt" /></intent></shortcut>
+  <shortcut android:shortcutId="pdf" android:enabled="true" android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="@string/sc_pdf" android:shortcutLongLabel="@string/sc_pdf">
+    <intent android:action="android.intent.action.VIEW" android:targetPackage="com.officeopensource.office_open_source" android:targetClass="com.officeopensource.office_open_source.MainActivity"><extra android:name="hash" android:value="new=pdf" /></intent></shortcut>
+</shortcuts>

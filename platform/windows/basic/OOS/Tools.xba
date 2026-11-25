@@ -1,0 +1,840 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="Tools" script:language="StarBasic">REM Office Open Source - built-in tools (application Basic library "OOS", module "Tools")
+REM Arguments: %TEMP%\oos_macro.txt (UTF-8, key=value per line). Result: %TEMP%\oos_macro_out.txt
+Option Explicit
+Dim gFound As Boolean
+Dim gTr As String
+Dim pg1 As Object
+
+Function Doc() As Object
+	Doc = ThisComponent
+	On Error Resume Next
+	Dim c As Object
+	c = StarDesktop.getCurrentComponent()
+	If Not IsNull(c) Then
+		If HasUnoInterfaces(c, "com.sun.star.frame.XModel") Then Doc = c
+	End If
+End Function
+
+Function Arg(k As String) As String
+	Dim sfa As Object, tis As Object, s As String, p As Integer, url As String
+	Arg = ""
+	url = ConvertToURL(Environ("TEMP") &amp; "\oos_macro.txt")
+	sfa = CreateUnoService("com.sun.star.ucb.SimpleFileAccess")
+	If Not sfa.exists(url) Then Exit Function
+	tis = CreateUnoService("com.sun.star.io.TextInputStream")
+	tis.setInputStream(sfa.openFileRead(url))
+	tis.setEncoding("UTF-8")
+	REM v0.1.7: read everything at once - isEOF() turns true while the last line is still buffered, so the last argument was lost
+	Dim sAll As String, lines() As String, i As Integer
+	sAll = tis.readString(Array(), False)
+	tis.closeInput()
+	lines = Split(sAll, Chr(10))
+	For i = LBound(lines) To UBound(lines)
+		s = lines(i)
+		If Right(s, 1) = Chr(13) Then s = Left(s, Len(s) - 1)
+		p = InStr(s, "=")
+		If p &gt; 1 Then
+			If Left(s, p - 1) = k Then Arg = Mid(s, p + 1)
+		End If
+	Next i
+End Function
+
+Sub WriteOut(s As String)
+	Dim sfa As Object, tos As Object, url As String
+	url = ConvertToURL(Environ("TEMP") &amp; "\oos_macro_out.txt")
+	sfa = CreateUnoService("com.sun.star.ucb.SimpleFileAccess")
+	If sfa.exists(url) Then sfa.kill(url)
+	tos = CreateUnoService("com.sun.star.io.TextOutputStream")
+	tos.setOutputStream(sfa.openFileWrite(url))
+	tos.setEncoding("UTF-8")
+	tos.writeString(s)
+	tos.closeOutput()
+End Sub
+
+Function ColName(ByVal c As Long) As String
+	Dim s As String
+	c = c + 1
+	Do While c &gt; 0
+		s = Chr(65 + ((c - 1) Mod 26)) &amp; s
+		c = (c - 1) \ 26
+	Loop
+	ColName = s
+End Function
+
+REM current selection as one cell range; a single cell expands to its data region
+Function SelRange(Optional expand As Boolean) As Object
+	Dim d As Object, sel As Object, cur As Object
+	d = Doc()
+	sel = d.getCurrentSelection()
+	SelRange = Nothing
+	If IsNull(sel) Then Exit Function
+	If Not sel.supportsService("com.sun.star.sheet.SheetCellRange") Then Exit Function
+	If Not IsMissing(expand) Then
+		If expand And sel.RangeAddress.StartColumn = sel.RangeAddress.EndColumn And sel.RangeAddress.StartRow = sel.RangeAddress.EndRow Then
+			cur = sel.getSpreadsheet().createCursorByRange(sel)
+			cur.collapseToCurrentRegion()
+			sel = sel.getSpreadsheet().getCellRangeByPosition(cur.RangeAddress.StartColumn, cur.RangeAddress.StartRow, cur.RangeAddress.EndColumn, cur.RangeAddress.EndRow)
+		End If
+	End If
+	SelRange = sel
+End Function
+
+Function AbsRef(sel As Object) As String
+	Dim a As Object
+	a = sel.RangeAddress
+	AbsRef = "$" &amp; ColName(a.StartColumn) &amp; "$" &amp; (a.StartRow + 1) &amp; ":$" &amp; ColName(a.EndColumn) &amp; "$" &amp; (a.EndRow + 1)
+End Function
+
+Function EnsureStyle(d As Object, nm As String, back As Long, fore As Long, bold As Boolean) As String
+	Dim fam As Object, st As Object
+	fam = d.getStyleFamilies().getByName("CellStyles")
+	If Not fam.hasByName(nm) Then
+		st = d.createInstance("com.sun.star.style.CellStyle")
+		fam.insertByName(nm, st)
+		If back &gt;= 0 Then
+			st.CellBackColor = back
+			st.IsCellBackgroundTransparent = False
+		End If
+		If fore &gt;= 0 Then st.CharColor = fore
+		If bold Then st.CharWeight = 150
+	End If
+	EnsureStyle = nm
+End Function
+
+Function StyleFor(d As Object, k As String) As String
+	Select Case k
+		Case "green": StyleFor = EnsureStyle(d, "OOS Green Fill", RGB(198, 239, 206), RGB(0, 97, 0), False)
+		Case "yellow": StyleFor = EnsureStyle(d, "OOS Yellow Fill", RGB(255, 235, 156), RGB(156, 87, 0), False)
+		Case "redtext": StyleFor = EnsureStyle(d, "OOS Red Text", -1, RGB(156, 0, 6), False)
+		Case "lightred": StyleFor = EnsureStyle(d, "OOS Light Red Fill", RGB(255, 199, 206), -1, False)
+		Case "bold": StyleFor = EnsureStyle(d, "OOS Bold", -1, -1, True)
+		Case Else: StyleFor = EnsureStyle(d, "OOS Red Fill", RGB(255, 199, 206), RGB(156, 0, 6), False)
+	End Select
+End Function
+
+REM ---------- Calc: conditional formatting ----------
+REM Rules are added as entries of one format per range (Excel-like stacking). A format created only through
+REM XConditionalFormats is not painted until the document is reloaded, so a new format is created the classic way
+REM (a never-true dummy condition through the ConditionalFormat property / ScDocFunc) and entries are added to it.
+Function FindExact(sel As Object) As Object
+	Dim all As Variant, i As Integer, r As Variant, a As Variant, s As Variant
+	gFound = False
+	s = sel.RangeAddress
+	all = sel.getSpreadsheet().ConditionalFormats.getConditionalFormats()
+	For i = LBound(all) To UBound(all)
+		r = all(i).Range.getRangeAddresses()
+		If UBound(r) = 0 Then
+			a = r(0)
+			If a.StartColumn = s.StartColumn And a.StartRow = s.StartRow And a.EndColumn = s.EndColumn And a.EndRow = s.EndRow Then
+				FindExact = all(i)
+				gFound = True
+			End If
+		End If
+	Next i
+End Function
+
+Function EnsureCF(sel As Object) As Object
+	Dim tc As Object, cf As Object
+	Dim p(3) As New com.sun.star.beans.PropertyValue
+	cf = FindExact(sel)
+	If gFound Then
+		EnsureCF = cf
+		Exit Function
+	End If
+	tc = sel.ConditionalFormat
+	p(0).Name = "Operator"
+	p(0).Value = com.sun.star.sheet.ConditionOperator.FORMULA
+	p(1).Name = "Formula1"
+	p(1).Value = "0"
+	p(2).Name = "StyleName"
+	p(2).Value = "Default"
+	p(3).Name = "SourcePosition"
+	p(3).Value = sel.getCellByPosition(0, 0).getCellAddress()
+	tc.addNew(p())
+	sel.ConditionalFormat = tc
+	EnsureCF = FindExact(sel)
+End Function
+
+Sub CondFormat
+	On Error GoTo Fail
+	Dim d As Object, sel As Object, cf As Object, e As Object, kind As String, op As Long, f1 As String, f2 As String, n As Integer
+	d = Doc()
+	sel = SelRange(False)
+	If IsNull(sel) Then
+		WriteOut("ERR:select")
+		Exit Sub
+	End If
+	kind = Arg("kind")
+	If kind = "clear" Then
+		cf = sel.ConditionalFormat
+		cf.clear()
+		sel.ConditionalFormat = cf
+		ClearScales(d, sel)
+		WriteOut("OK")
+		Exit Sub
+	End If
+	If kind = "databar" Or kind = "scale2" Or kind = "scale3" Then
+		ScaleFormat(d, sel, kind)
+		Exit Sub
+	End If
+	f1 = Arg("v1")
+	f2 = Arg("v2")
+	Select Case kind
+		Case "gt": op = com.sun.star.sheet.ConditionFormatOperator.GREATER
+		Case "lt": op = com.sun.star.sheet.ConditionFormatOperator.LESS
+		Case "eq": op = com.sun.star.sheet.ConditionFormatOperator.EQUAL
+		Case "between": op = com.sun.star.sheet.ConditionFormatOperator.BETWEEN
+		Case "text": op = com.sun.star.sheet.ConditionFormatOperator.CONTAINS
+		Case "dup": op = com.sun.star.sheet.ConditionFormatOperator.DUPLICATE
+		Case "unique": op = com.sun.star.sheet.ConditionFormatOperator.UNIQUE
+		Case "top": op = com.sun.star.sheet.ConditionFormatOperator.TOP_N_ELEMENTS
+		Case "bottom": op = com.sun.star.sheet.ConditionFormatOperator.BOTTOM_N_ELEMENTS
+		Case "above": op = com.sun.star.sheet.ConditionFormatOperator.ABOVE_AVERAGE
+		Case "below": op = com.sun.star.sheet.ConditionFormatOperator.BELOW_AVERAGE
+		Case Else
+			WriteOut("ERR:kind")
+			Exit Sub
+	End Select
+	cf = EnsureCF(sel)
+	If Not gFound Then
+		WriteOut("ERR:cf")
+		Exit Sub
+	End If
+	n = cf.getCount()
+	cf.createEntry(com.sun.star.sheet.ConditionEntryType.CONDITION, n)
+	e = cf.getByIndex(n)
+	e.Operator = op
+	If f1 &lt;&gt; "" Then e.Formula1 = f1
+	If f2 &lt;&gt; "" Then e.Formula2 = f2
+	e.StyleName = StyleFor(d, Arg("style"))
+	WriteOut("OK")
+	Exit Sub
+Fail:
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+
+Sub ScaleFormat(d As Object, sel As Object, kind As String)
+	On Error GoTo Fail
+	Dim cf As Object, e As Object, ent As Variant, n As Integer
+	cf = EnsureCF(sel)
+	If Not gFound Then
+		WriteOut("ERR:cf")
+		Exit Sub
+	End If
+	n = cf.getCount()
+	If kind = "databar" Then
+		cf.createEntry(com.sun.star.sheet.ConditionEntryType.DATABAR, n)
+		e = cf.getByIndex(n)
+		ent = e.DataBarEntries
+		ent(0).setType(com.sun.star.sheet.DataBarEntryType.DATABAR_MIN)
+		ent(1).setType(com.sun.star.sheet.DataBarEntryType.DATABAR_MAX)
+		e.Color = Val(Arg("color"))
+	ElseIf kind = "scale2" Then
+		cf.createEntry(com.sun.star.sheet.ConditionEntryType.COLORSCALE2, n)
+		e = cf.getByIndex(n)
+		ent = e.ColorScaleEntries
+		ent(0).setType(com.sun.star.sheet.ColorScaleEntryType.COLORSCALE_MIN)
+		ent(0).setColor(RGB(255, 255, 255))
+		ent(1).setType(com.sun.star.sheet.ColorScaleEntryType.COLORSCALE_MAX)
+		ent(1).setColor(Val(Arg("color")))
+	Else
+		cf.createEntry(com.sun.star.sheet.ConditionEntryType.COLORSCALE3, n)
+		e = cf.getByIndex(n)
+		ent = e.ColorScaleEntries
+		ent(0).setType(com.sun.star.sheet.ColorScaleEntryType.COLORSCALE_MIN)
+		ent(0).setColor(RGB(248, 105, 107))
+		ent(1).setType(com.sun.star.sheet.ColorScaleEntryType.COLORSCALE_PERCENTILE)
+		ent(1).setFormula("50")
+		ent(1).setColor(RGB(255, 235, 132))
+		ent(2).setType(com.sun.star.sheet.ColorScaleEntryType.COLORSCALE_MAX)
+		ent(2).setColor(RGB(99, 190, 123))
+	End If
+	WriteOut("OK")
+	Exit Sub
+Fail:
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+
+Sub ClearScales(d As Object, sel As Object)
+	On Error Resume Next
+	Dim cfs As Object, all As Variant, i As Integer, r As Variant, a As Variant, s As Variant, k As Integer, hit As Boolean
+	s = sel.RangeAddress
+	cfs = sel.getSpreadsheet().ConditionalFormats
+	all = cfs.getConditionalFormats()
+	For i = UBound(all) To LBound(all) Step -1
+		r = all(i).Range.getRangeAddresses()
+		hit = False
+		For k = LBound(r) To UBound(r)
+			a = r(k)
+			If a.StartColumn &lt;= s.EndColumn And a.EndColumn &gt;= s.StartColumn And a.StartRow &lt;= s.EndRow And a.EndRow &gt;= s.StartRow Then hit = True
+		Next k
+		If hit Then cfs.removeByID(all(i).ID)
+	Next i
+End Sub
+
+REM ---------- Calc: PivotTable ----------
+Sub ListHeaders
+	On Error GoTo Fail
+	Dim sel As Object, a As Object, s As String, c As Long, t As String
+	sel = SelRange(True)
+	If IsNull(sel) Then
+		WriteOut("ERR:select")
+		Exit Sub
+	End If
+	a = sel.RangeAddress
+	s = a.Sheet &amp; Chr(9) &amp; a.StartColumn &amp; Chr(9) &amp; a.StartRow &amp; Chr(9) &amp; a.EndColumn &amp; Chr(9) &amp; a.EndRow
+	For c = 0 To a.EndColumn - a.StartColumn
+		t = sel.getCellByPosition(c, 0).getString()
+		If t = "" Then t = "Cột " &amp; ColName(a.StartColumn + c)
+		If a.EndRow &gt; a.StartRow And sel.getCellByPosition(c, 1).getType() = com.sun.star.table.CellContentType.VALUE Then t = t &amp; Chr(9) &amp; "1"
+		s = s &amp; Chr(10) &amp; t
+	Next c
+	WriteOut(s)
+	Exit Sub
+Fail:
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+
+Sub PivotTable
+	On Error GoTo Fail
+	Dim d As Object, sheets As Object, src As New com.sun.star.table.CellRangeAddress, ns As Object, dp As Object, desc As Object, f As Object
+	Dim nm As String, i As Integer, rowI As Integer, colI As Integer, dataI As Integer, fn As String
+	d = Doc()
+	sheets = d.getSheets()
+	src.Sheet = Val(Arg("sheet"))
+	src.StartColumn = Val(Arg("c1"))
+	src.StartRow = Val(Arg("r1"))
+	src.EndColumn = Val(Arg("c2"))
+	src.EndRow = Val(Arg("r2"))
+	rowI = Val(Arg("row"))
+	colI = Val(Arg("col"))
+	dataI = Val(Arg("data"))
+	fn = Arg("func")
+	i = 1
+	nm = Arg("name")
+	If nm = "" Then nm = "PivotTable"
+	Do While sheets.hasByName(nm &amp; i)
+		i = i + 1
+	Loop
+	nm = nm &amp; i
+	sheets.insertNewByName(nm, src.Sheet)
+	src.Sheet = src.Sheet + 1
+	ns = sheets.getByName(nm)
+	dp = ns.getDataPilotTables()
+	desc = dp.createDataPilotDescriptor()
+	desc.setSourceRange(src)
+	f = desc.getDataPilotFields().getByIndex(rowI)
+	f.Orientation = com.sun.star.sheet.DataPilotFieldOrientation.ROW
+	If colI &gt;= 0 And colI &lt;&gt; rowI And colI &lt;&gt; dataI Then
+		f = desc.getDataPilotFields().getByIndex(colI)
+		f.Orientation = com.sun.star.sheet.DataPilotFieldOrientation.COLUMN
+	End If
+	f = desc.getDataPilotFields().getByIndex(dataI)
+	f.Orientation = com.sun.star.sheet.DataPilotFieldOrientation.DATA
+	Select Case fn
+		Case "COUNT": f.Function = com.sun.star.sheet.GeneralFunction.COUNT
+		Case "AVERAGE": f.Function = com.sun.star.sheet.GeneralFunction.AVERAGE
+		Case "MAX": f.Function = com.sun.star.sheet.GeneralFunction.MAX
+		Case "MIN": f.Function = com.sun.star.sheet.GeneralFunction.MIN
+		Case Else: f.Function = com.sun.star.sheet.GeneralFunction.SUM
+	End Select
+	dp.insertNewByName(nm, ns.getCellByPosition(0, 2).getCellAddress(), desc)
+	ns.getCellByPosition(0, 0).setString(Arg("title"))
+	d.getCurrentController().setActiveSheet(ns)
+	WriteOut("OK" &amp; Chr(9) &amp; (src.Sheet - 1))
+	Exit Sub
+Fail:
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+
+Sub RefreshPivots
+	On Error GoTo Fail
+	Dim d As Object, sh As Object, dp As Object, i As Integer, k As Integer, n As Integer
+	d = Doc()
+	For i = 0 To d.getSheets().getCount() - 1
+		dp = d.getSheets().getByIndex(i).getDataPilotTables()
+		For k = 0 To dp.getCount() - 1
+			dp.getByIndex(k).refresh()
+			n = n + 1
+		Next k
+	Next i
+	WriteOut("OK" &amp; Chr(9) &amp; n)
+	Exit Sub
+Fail:
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+
+REM ---------- Calc: data tools ----------
+Sub RemoveDuplicates
+	On Error GoTo Fail
+	Dim sel As Object, data As Variant, outRows() As Variant, keys As Object, r As Long, c As Long, k As String, n As Long, first As Long, w As Long, blank() As Variant, removed As Long
+	sel = SelRange(True)
+	If IsNull(sel) Then
+		WriteOut("ERR:select")
+		Exit Sub
+	End If
+	data = sel.getDataArray()
+	keys = com.sun.star.container.EnumerableMap.create("string", "boolean")
+	first = 0
+	If Arg("header") = "1" Then first = 1
+	ReDim outRows(UBound(data))
+	n = 0
+	For r = 0 To UBound(data)
+		k = ""
+		For c = 0 To UBound(data(r))
+			k = k &amp; Chr(1) &amp; CStr(data(r)(c))
+		Next c
+		If r &lt; first Then
+			outRows(n) = data(r)
+			n = n + 1
+		ElseIf Not keys.containsKey(k) Then
+			keys.put(k, True)
+			outRows(n) = data(r)
+			n = n + 1
+		End If
+	Next r
+	removed = UBound(data) + 1 - n
+	w = UBound(data(0))
+	ReDim blank(w)
+	For c = 0 To w
+		blank(c) = ""
+	Next c
+	For r = n To UBound(data)
+		outRows(r) = blank
+	Next r
+	If removed &gt; 0 Then
+		sel.getCellRangeByPosition(0, n, w, UBound(data)).clearContents(com.sun.star.sheet.CellFlags.VALUE + com.sun.star.sheet.CellFlags.STRING + com.sun.star.sheet.CellFlags.FORMULA + com.sun.star.sheet.CellFlags.DATETIME)
+		ReDim Preserve outRows(n - 1)
+		sel.getCellRangeByPosition(0, 0, w, n - 1).setDataArray(outRows)
+	End If
+	WriteOut("OK" &amp; Chr(9) &amp; removed &amp; Chr(9) &amp; n)
+	Exit Sub
+Fail:
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+
+Sub TextToColumns
+	On Error GoTo Fail
+	Dim sel As Object, sh As Object, a As Object, r As Long, parts As Variant, k As Integer, dl As String, s As String, n As Long, cell As Object
+	sel = SelRange(False)
+	If IsNull(sel) Then
+		WriteOut("ERR:select")
+		Exit Sub
+	End If
+	dl = Arg("delim")
+	If dl = "TAB" Then dl = Chr(9)
+	If dl = "SPACE" Then dl = " "
+	sh = sel.getSpreadsheet()
+	a = sel.RangeAddress
+	For r = a.StartRow To a.EndRow
+		s = sh.getCellByPosition(a.StartColumn, r).getString()
+		If InStr(s, dl) &gt; 0 Then
+			parts = Split(s, dl)
+			For k = 0 To UBound(parts)
+				cell = sh.getCellByPosition(a.StartColumn + k, r)
+				If IsNumeric(parts(k)) And Trim(parts(k)) &lt;&gt; "" Then
+					cell.setFormula(Trim(parts(k)))
+				Else
+					cell.setString(parts(k))
+				End If
+			Next k
+			n = n + 1
+		End If
+	Next r
+	WriteOut("OK" &amp; Chr(9) &amp; n)
+	Exit Sub
+Fail:
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+
+Sub Validation
+	On Error GoTo Fail
+	Dim sel As Object, v As Object, kind As String
+	sel = SelRange(False)
+	If IsNull(sel) Then
+		WriteOut("ERR:select")
+		Exit Sub
+	End If
+	kind = Arg("kind")
+	v = sel.Validation
+	If kind = "clear" Then
+		v.Type = com.sun.star.sheet.ValidationType.ANY
+		v.ShowErrorMessage = False
+	ElseIf kind = "list" Then
+		v.Type = com.sun.star.sheet.ValidationType.LIST
+		v.ShowList = 1
+		v.setFormula1(Arg("v1"))
+		v.ShowErrorMessage = True
+		v.ErrorAlertStyle = com.sun.star.sheet.ValidationAlertStyle.STOP
+	Else
+		If kind = "decimal" Then
+			v.Type = com.sun.star.sheet.ValidationType.DECIMAL
+		ElseIf kind = "date" Then
+			v.Type = com.sun.star.sheet.ValidationType.DATE
+		Else
+			v.Type = com.sun.star.sheet.ValidationType.WHOLE
+		End If
+		v.setOperator(com.sun.star.sheet.ConditionOperator.BETWEEN)
+		v.setFormula1(Arg("v1"))
+		v.setFormula2(Arg("v2"))
+		v.ShowErrorMessage = True
+		v.ErrorAlertStyle = com.sun.star.sheet.ValidationAlertStyle.STOP
+	End If
+	v.ErrorTitle = "Office Open Source"
+	v.ErrorMessage = Arg("msg")
+	sel.Validation = v
+	WriteOut("OK")
+	Exit Sub
+Fail:
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+
+REM ---------- Writer: table of contents / captions ----------
+Sub InsertTOC
+	On Error GoTo Fail
+	Dim d As Object, vc As Object, idx As Object, lv As Integer, t As String
+	d = Doc()
+	vc = d.getCurrentController().getViewCursor()
+	idx = d.createInstance("com.sun.star.text.ContentIndex")
+	lv = Val(Arg("levels"))
+	If lv &lt; 1 Then lv = 3
+	idx.CreateFromOutline = True
+	idx.Level = lv
+	t = Arg("title")
+	idx.Title = t
+	vc.getText().insertTextContent(vc.getStart(), idx, False)
+	idx.update()
+	WriteOut("OK")
+	Exit Sub
+Fail:
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+
+Sub UpdateTOC
+	On Error GoTo Fail
+	Dim d As Object, i As Integer, n As Integer
+	d = Doc()
+	For i = 0 To d.getDocumentIndexes().getCount() - 1
+		d.getDocumentIndexes().getByIndex(i).update()
+		n = n + 1
+	Next i
+	WriteOut("OK" &amp; Chr(9) &amp; n)
+	Exit Sub
+Fail:
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+
+Sub RemoveTOC
+	On Error GoTo Fail
+	Dim d As Object, i As Integer, n As Integer, x As Object
+	d = Doc()
+	For i = d.getDocumentIndexes().getCount() - 1 To 0 Step -1
+		x = d.getDocumentIndexes().getByIndex(i)
+		If x.supportsService("com.sun.star.text.ContentIndex") Then
+			x.dispose()
+			n = n + 1
+		End If
+	Next i
+	WriteOut("OK" &amp; Chr(9) &amp; n)
+	Exit Sub
+Fail:
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+
+Sub InsertCaption
+	On Error GoTo Fail
+	Dim d As Object, vc As Object, txt As Object, cat As String, fm As Object, num As Object
+	d = Doc()
+	vc = d.getCurrentController().getViewCursor()
+	txt = vc.getText()
+	cat = Arg("cat")
+	If cat = "" Then cat = "Hình"
+	vc.gotoEndOfLine(False)
+	txt.insertControlCharacter(vc.getEnd(), com.sun.star.text.ControlCharacter.PARAGRAPH_BREAK, False)
+	txt.insertString(vc.getEnd(), cat &amp; " ", False)
+	num = d.createInstance("com.sun.star.text.TextField.SetExpression")
+	fm = d.getTextFieldMasters()
+	Dim mName As String
+	mName = "com.sun.star.text.fieldmaster.SetExpression." &amp; cat
+	Dim master As Object
+	If fm.hasByName(mName) Then
+		master = fm.getByName(mName)
+	Else
+		master = d.createInstance("com.sun.star.text.fieldmaster.SetExpression")
+		master.Name = cat
+		master.SubType = com.sun.star.text.SetVariableType.SEQUENCE
+	End If
+	num.attachTextFieldMaster(master)
+	num.NumberingType = com.sun.star.style.NumberingType.ARABIC
+	num.Content = cat &amp; "+1"
+	txt.insertTextContent(vc.getEnd(), num, False)
+	txt.insertString(vc.getEnd(), ": " &amp; Arg("text"), False)
+	On Error Resume Next
+	vc.ParaStyleName = "Caption"
+	d.getTextFields().refresh()
+	WriteOut("OK")
+	Exit Sub
+Fail:
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+
+REM ---------- Equations (LibreOffice Math object, StarMath syntax) ----------
+Sub InsertFormula
+	On Error GoTo Fail
+	Dim d As Object, f As String, obj As Object, vc As Object, page As Object, sh As Object, sel As Object
+	Dim pos As New com.sun.star.awt.Point, sz As New com.sun.star.awt.Size
+	d = Doc()
+	f = Arg("formula")
+	If d.supportsService("com.sun.star.text.TextDocument") Then
+		obj = d.createInstance("com.sun.star.text.TextEmbeddedObject")
+		obj.CLSID = "078B7ABA-54FC-457F-8551-6147e776a997"
+		obj.AnchorType = com.sun.star.text.TextContentAnchorType.AS_CHARACTER
+		vc = d.getCurrentController().getViewCursor()
+		vc.getText().insertTextContent(vc.getEnd(), obj, False)
+		obj.getEmbeddedObject().Formula = f
+		On Error Resume Next
+		obj.ExtendedControlOverEmbeddedObject.update()
+	Else
+		If d.supportsService("com.sun.star.sheet.SpreadsheetDocument") Then
+			page = d.getCurrentController().getActiveSheet().getDrawPage()
+			sel = d.getCurrentSelection()
+			On Error Resume Next
+			pos = sel.Position
+			On Error GoTo Fail
+		Else
+			page = d.getCurrentController().getCurrentPage()
+			pos.X = 2000
+			pos.Y = 2000
+		End If
+		sh = d.createInstance("com.sun.star.drawing.OLE2Shape")
+		page.add(sh)
+		sh.CLSID = "078B7ABA-54FC-457F-8551-6147e776a997"
+		sh.Model.Formula = f
+		sh.setPosition(pos)
+		REM natural size of the formula (VisibleArea of the Math object), else an estimate from its length
+		Dim va As Variant
+		sz.Width = Len(f) * 170
+		If sz.Width &lt; 2000 Then sz.Width = 2000
+		If sz.Width &gt; 14000 Then sz.Width = 14000
+		sz.Height = 1100
+		On Error Resume Next
+		va = sh.VisibleArea
+		If Not IsNull(va) Then
+			If va.Width &gt; 200 And va.Height &gt; 200 Then
+				sz.Width = va.Width
+				sz.Height = va.Height
+			End If
+		End If
+		On Error GoTo Fail
+		sh.setSize(sz)
+	End If
+	WriteOut("OK")
+	Exit Sub
+Fail:
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+
+REM ===== v0.1.7: PowerPoint animations (written into the file as real animation nodes via EffectMigration) =====
+Function AnimEffect(n As String) As Long
+	Select Case n
+		Case "appear": AnimEffect = com.sun.star.presentation.AnimationEffect.APPEAR
+		Case "dissolve": AnimEffect = com.sun.star.presentation.AnimationEffect.DISSOLVE
+		Case "flyleft": AnimEffect = com.sun.star.presentation.AnimationEffect.MOVE_FROM_LEFT
+		Case "flyright": AnimEffect = com.sun.star.presentation.AnimationEffect.MOVE_FROM_RIGHT
+		Case "flytop": AnimEffect = com.sun.star.presentation.AnimationEffect.MOVE_FROM_TOP
+		Case "flybottom": AnimEffect = com.sun.star.presentation.AnimationEffect.MOVE_FROM_BOTTOM
+		Case "wipe": AnimEffect = com.sun.star.presentation.AnimationEffect.FADE_FROM_LEFT
+		Case "zoom": AnimEffect = com.sun.star.presentation.AnimationEffect.ZOOM_IN_FROM_CENTER
+		Case "spin": AnimEffect = com.sun.star.presentation.AnimationEffect.CLOCKWISE
+		Case "stripes": AnimEffect = com.sun.star.presentation.AnimationEffect.VERTICAL_STRIPES
+		Case "checker": AnimEffect = com.sun.star.presentation.AnimationEffect.HORIZONTAL_CHECKERBOARD
+		Case "fadecenter": AnimEffect = com.sun.star.presentation.AnimationEffect.FADE_FROM_CENTER
+		Case Else: AnimEffect = com.sun.star.presentation.AnimationEffect.NONE
+	End Select
+End Function
+
+Function AnimSpeed(s As String) As Long
+	If s = "slow" Then
+		AnimSpeed = com.sun.star.presentation.AnimationSpeed.SLOW
+	ElseIf s = "fast" Then
+		AnimSpeed = com.sun.star.presentation.AnimationSpeed.FAST
+	Else
+		AnimSpeed = com.sun.star.presentation.AnimationSpeed.MEDIUM
+	End If
+End Function
+
+Sub Animate
+	On Error GoTo Fail
+	Dim d As Object, sel As Object, i As Long, n As Long, sh As Object, eff As String
+	d = Doc()
+	eff = Arg("effect")
+	sel = d.getCurrentController().getSelection()
+	If IsNull(sel) Then
+		WriteOut("ERR:select")
+		Exit Sub
+	End If
+	If Not HasUnoInterfaces(sel, "com.sun.star.container.XIndexAccess") Then
+		WriteOut("ERR:select")
+		Exit Sub
+	End If
+	For i = 0 To sel.getCount() - 1
+		sh = sel.getByIndex(i)
+		sh.Effect = AnimEffect(eff)
+		sh.Speed = AnimSpeed(Arg("speed"))
+		n = n + 1
+	Next i
+	If n = 0 Then
+		WriteOut("ERR:select")
+	Else
+		WriteOut("OK " &amp; n)
+	End If
+	Exit Sub
+Fail:
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+
+Sub ListAnimations
+	On Error GoTo Fail
+	Dim d As Object, pg As Object, i As Long, sh As Object, s As String, nm As String, k As Long
+	d = Doc()
+	pg = d.getCurrentController().getCurrentPage()
+	For i = 0 To pg.getCount() - 1
+		sh = pg.getByIndex(i)
+		On Error Resume Next
+		k = 0
+		k = sh.Effect
+		On Error GoTo Fail
+		If k &lt;&gt; com.sun.star.presentation.AnimationEffect.NONE Then
+			nm = sh.Name
+			If nm = "" Then nm = "Đối tượng " &amp; (i + 1)
+			If HasUnoInterfaces(sh, "com.sun.star.text.XText") Then
+				If Len(sh.getString()) &gt; 0 Then nm = nm &amp; ": " &amp; Left(Replace(sh.getString(), Chr(10), " "), 40)
+			End If
+			s = s &amp; i &amp; "|" &amp; k &amp; "|" &amp; nm &amp; Chr(10)
+		End If
+	Next i
+	WriteOut("OK" &amp; Chr(10) &amp; s)
+	Exit Sub
+Fail:
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+
+Sub ClearAnimations
+	On Error GoTo Fail
+	Dim d As Object, pg As Object, i As Long, sh As Object, n As Long
+	d = Doc()
+	pg = d.getCurrentController().getCurrentPage()
+	For i = 0 To pg.getCount() - 1
+		sh = pg.getByIndex(i)
+		On Error Resume Next
+		If sh.Effect &lt;&gt; com.sun.star.presentation.AnimationEffect.NONE Then
+			sh.Effect = com.sun.star.presentation.AnimationEffect.NONE
+			n = n + 1
+		End If
+		On Error GoTo Fail
+	Next i
+	WriteOut("OK " &amp; n)
+	Exit Sub
+Fail:
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+
+REM ===== v0.1.7: slide transitions stored in the file (PowerPoint keeps them) =====
+Sub SetTransitionOn(pg As Object, t As String, dur As Double)
+	Dim tt As Integer, st As Integer
+	tt = 0
+	st = 0
+	Select Case t
+		Case "fade": tt = com.sun.star.animations.TransitionType.FADE: st = com.sun.star.animations.TransitionSubType.CROSSFADE
+		Case "push": tt = com.sun.star.animations.TransitionType.PUSHWIPE: st = com.sun.star.animations.TransitionSubType.FROMRIGHT
+		Case "wipe": tt = com.sun.star.animations.TransitionType.BARWIPE: st = com.sun.star.animations.TransitionSubType.LEFTTORIGHT
+		Case "zoom": tt = com.sun.star.animations.TransitionType.IRISWIPE: st = com.sun.star.animations.TransitionSubType.RECTANGLE
+		Case "split": tt = com.sun.star.animations.TransitionType.BARNDOORWIPE: st = com.sun.star.animations.TransitionSubType.VERTICAL
+	End Select
+	On Error Resume Next
+	pg.setPropertyValue("TransitionType", tt)
+	pg.setPropertyValue("TransitionSubtype", st)
+	pg.setPropertyValue("TransitionDirection", True)
+	If dur &lt;= 0.5 Then
+		pg.setPropertyValue("Speed", com.sun.star.presentation.AnimationSpeed.FAST)
+	ElseIf dur &gt;= 1 Then
+		pg.setPropertyValue("Speed", com.sun.star.presentation.AnimationSpeed.SLOW)
+	Else
+		pg.setPropertyValue("Speed", com.sun.star.presentation.AnimationSpeed.MEDIUM)
+	End If
+	pg.setPropertyValue("TransitionDuration", dur)
+	gTr = gTr &amp; " " &amp; pg.getPropertyValue("TransitionType") &amp; "/" &amp; pg.getPropertyValue("TransitionSubtype") &amp; "/" &amp; pg.getPropertyValue("TransitionDuration")
+End Sub
+
+Sub SlideTransition
+	On Error GoTo Fail
+	gTr = ""
+	Dim d As Object, pages As Object, i As Long, t As String, dur As Double
+	d = Doc()
+	t = Arg("type")
+	dur = Val(Arg("dur"))
+	If dur &lt;= 0 Then dur = 0.7
+	If Arg("all") = "1" Then
+		Dim dp As Object, cnt As Long
+		dp = d.getDrawPages()
+		cnt = dp.getCount()
+		For i = 0 To cnt - 1
+			pg1 = dp.getByIndex(i)
+			SetTransitionOn(pg1, t, dur)
+		Next i
+	Else
+		SetTransitionOn(d.getCurrentController().getCurrentPage(), t, dur)
+	End If
+	WriteOut("OK" &amp; gTr)
+	Exit Sub
+Fail:
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+
+REM ===== v0.1.7: Mailings (Word) - the recipient list is read by the app; one call per record (no second document is opened in the engine)
+Sub InsertMergeField
+	On Error GoTo Fail
+	Dim d As Object, vc As Object
+	d = Doc()
+	vc = d.getCurrentController().getViewCursor()
+	vc.getText().insertString(vc, Chr(171) &amp; Arg("field") &amp; Chr(187), False)
+	WriteOut("OK")
+	Exit Sub
+Fail:
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+
+Sub MergeOne
+	On Error GoTo Fail
+	Dim d As Object, um As Object, rd As Object, i As Integer, nm As String, n As Long
+	d = Doc()
+	um = d.getUndoManager()
+	um.enterUndoContext("OOS merge")
+	For i = 0 To 63
+		nm = Arg("f" &amp; i)
+		If nm = "" Then Exit For
+		rd = d.createReplaceDescriptor()
+		rd.setSearchString(Chr(171) &amp; nm &amp; Chr(187))
+		rd.setReplaceString(Arg("v" &amp; i))
+		n = n + d.replaceAll(rd)
+	Next i
+	um.leaveUndoContext()
+	Dim sp(0) As New com.sun.star.beans.PropertyValue
+	sp(0).Name = "FilterName"
+	If Arg("format") = "pdf" Then
+		sp(0).Value = "writer_pdf_Export"
+	Else
+		sp(0).Value = "MS Word 2007 XML"
+	End If
+	d.storeToURL(ConvertToURL(Arg("out")), sp())
+	If n &gt; 0 Then um.undo()
+	WriteOut("OK " &amp; n)
+	Exit Sub
+Fail:
+	On Error Resume Next
+	um.leaveUndoContext()
+	WriteOut("ERR:basic " &amp; Erl &amp; " " &amp; Error$)
+End Sub
+</script:module>

@@ -1,0 +1,17 @@
+platform/android/app/build/
+platform/android/.gradle/
+platform/android/local.properties
+**/assets/www/
+dist/
+dist-modern/
+dist-legacy/
+.babelcache/
+node_modules/
+*.apk
+*.msi
+*.appx
+*.appxbundle
+*.pfx
+*.jks
+bin/
+obj/

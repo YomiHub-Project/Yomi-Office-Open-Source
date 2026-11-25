@@ -1,0 +1,138 @@
+/* Office Open Source v0.1.4 Styles - System Bars & Navigation Bar Anti-Obscuration */
+
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --extra-safe-top: 0px;
+  --extra-safe-bottom: 0px;
+}
+
+/* Ensure #app respects window bounds */
+#app {
+  box-sizing: border-box;
+}
+
+/* 1. Title bar & Top Header: Clearance from Status Bar & Notification Panel */
+body:not(.anti-obscuration-off) .titlebar {
+  min-height: calc(42px + var(--safe-top, 0px) + var(--extra-safe-top, 0px));
+  height: calc(42px + var(--safe-top, 0px) + var(--extra-safe-top, 0px));
+  flex: 0 0 calc(42px + var(--safe-top, 0px) + var(--extra-safe-top, 0px));
+  padding-top: calc(var(--safe-top, 0px) + var(--extra-safe-top, 0px));
+  box-sizing: border-box;
+}
+
+/* 2. Start Screen Left Rail: Clearance for Settings & AI buttons from Bottom Navigation Bar */
+body:not(.anti-obscuration-off) .start-rail {
+  padding-top: calc(12px + var(--safe-top, 0px) + var(--extra-safe-top, 0px));
+  padding-bottom: calc(64px + var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px)) !important;
+  padding-left: calc(var(--safe-left, 0px));
+  box-sizing: border-box;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 3. Backstage File Menu Nav: Clearance for Options/Settings & Account buttons */
+body:not(.anti-obscuration-off) .bs-nav {
+  padding-top: calc(10px + var(--safe-top, 0px) + var(--extra-safe-top, 0px));
+  padding-bottom: calc(68px + var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px)) !important;
+  padding-left: calc(var(--safe-left, 0px));
+  box-sizing: border-box;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+body:not(.anti-obscuration-off) .bs-main {
+  padding-top: calc(16px + var(--safe-top, 0px) + var(--extra-safe-top, 0px));
+  padding-bottom: calc(56px + var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px));
+  box-sizing: border-box;
+}
+
+/* 4. Start Screen Main Area: Clearance from Top Status Bar and Bottom */
+body:not(.anti-obscuration-off) .start-main {
+  padding-top: calc(20px + var(--safe-top, 0px) + var(--extra-safe-top, 0px));
+  padding-bottom: calc(48px + var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px));
+  padding-left: calc(28px + var(--safe-left, 0px));
+  padding-right: calc(28px + var(--safe-right, 0px));
+  box-sizing: border-box;
+}
+
+/* 5. Bottom Status Bar & Sheet Tabs: Clearance from Android 3-Button / Gesture Navigation Bar */
+body:not(.anti-obscuration-off) .statusbar {
+  min-height: calc(32px + var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px));
+  height: calc(32px + var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px));
+  flex: 0 0 calc(32px + var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px));
+  padding-bottom: calc(var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px));
+  box-sizing: border-box;
+}
+
+body:not(.anti-obscuration-off) .sheet-bar {
+  min-height: calc(32px + var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px));
+  padding-bottom: calc(var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px));
+  box-sizing: border-box;
+}
+
+/* 6. Dialogs, Options/Settings Modals & Confirm Prompts: Full Protection Against Obscuration */
+body:not(.anti-obscuration-off) .dlg-back {
+  padding-top: calc(28px + var(--safe-top, 0px) + var(--extra-safe-top, 0px)) !important;
+  padding-bottom: calc(56px + var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px)) !important;
+  padding-left: calc(16px + var(--safe-left, 0px)) !important;
+  padding-right: calc(16px + var(--safe-right, 0px)) !important;
+  box-sizing: border-box;
+}
+
+body:not(.anti-obscuration-off) .dlg {
+  max-height: calc(100vh - 96px - var(--safe-top, 0px) - var(--safe-bottom, 0px) - var(--extra-safe-top, 0px) - var(--extra-safe-bottom, 0px)) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.32);
+}
+
+body:not(.anti-obscuration-off) .dlg-head {
+  flex-shrink: 0;
+}
+
+body:not(.anti-obscuration-off) .dlg-body {
+  flex: 1 1 auto;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 20px;
+}
+
+body:not(.anti-obscuration-off) .dlg-foot {
+  flex-shrink: 0;
+  min-height: 52px;
+  padding: 10px 16px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+body:not(.anti-obscuration-off) .dlg-foot .btn {
+  min-height: 36px;
+  line-height: 22px;
+  font-size: 13px;
+  padding: 6px 16px;
+}
+
+/* 7. Toast / Notifications */
+body:not(.anti-obscuration-off) .toast-box {
+  bottom: calc(44px + var(--safe-bottom, 0px) + var(--extra-safe-bottom, 0px));
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 600px) {
+  body:not(.anti-obscuration-off) .start-rail {
+    width: 72px;
+  }
+  body:not(.anti-obscuration-off) .dlg {
+    width: 95vw !important;
+    max-width: 95vw !important;
+  }
+}

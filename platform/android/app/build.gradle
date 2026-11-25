@@ -1,0 +1,62 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'com.officeopensource.office_open_source'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.officeopensource.office_open_source'
+        minSdk 23
+        targetSdk 35
+        versionCode 18
+        versionName '0.1.8'
+        // v0.1.8: 3 ABI (arm64-v8a, armeabi-v7a, x86_64) — x86 32-bit bỏ (không còn thiết bị thực tế), mỗi APK chỉ chứa thư viện của 1 CPU
+        // (không dùng ndk.abiFilters: AGP báo xung đột với splits.abi — splits bên dưới quyết định CPU của từng APK)
+    }
+    signingConfigs {
+        // same debug keystore as v0.0.3/v0.0.4 -> installs as in-place update
+        upgrade { storeFile file(System.getProperty('user.home') + '/.android/debug.keystore'); storePassword 'android'; keyAlias 'androiddebugkey'; keyPassword 'android' }
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.upgrade
+        }
+        debug { signingConfig signingConfigs.upgrade }
+    }
+    // v0.0.6: one APK per Android generation (same package & signature -> in-place upgrade from 0.0.5)
+    //   legacy    : Android 6.0-7.1 (API 23-25), old WebView (Chrome 44+): ES5 bundle + asm.js OCR only (smallest)
+    //   universal : Android 6.0+  (API 23+), any WebView: ES5 bundle + WASM OCR with asm.js fallback
+    //   modern    : Android 10+   (API 29+), evergreen WebView: ES2017 bundle + WASM (fastest)
+    flavorDimensions 'android'
+    productFlavors {
+        // v0.1.6: + android8 (8.0-9, API 26-28). Every flavor embeds the LibreOffice core (LibreOfficeKit) for native rendering.
+        // v0.1.8: bộ cài theo CPU × phiên bản Android (chủ dự án chọn). versionCode = 18000 + 10*flavor + ABI (> mọi bản 0.1.7: 1701–1704)
+        legacy    { dimension 'android'; minSdk 23; versionCode 18010; versionNameSuffix '-android6';  buildConfigField 'String', 'EDITION', '"Android6-7"' }
+        android8  { dimension 'android'; minSdk 26; versionCode 18020; versionNameSuffix '-android8';  buildConfigField 'String', 'EDITION', '"Android8-9"' }
+        modern    { dimension 'android'; minSdk 29; versionCode 18030; versionNameSuffix '-android10'; buildConfigField 'String', 'EDITION', '"Android10plus"' }
+        universal { dimension 'android'; minSdk 23; versionCode 18040; versionNameSuffix '-universal'; buildConfigField 'String', 'EDITION', '"Android6plus-universal"' } // không phát hành ở v0.1.8
+    }
+    splits {
+        abi { enable true; reset(); include 'arm64-v8a', 'armeabi-v7a', 'x86_64'; universalApk false }
+    }
+    sourceSets {
+        main.jniLibs.srcDirs += [rootProject.file('../../../../v016/lo/android/jniLibs')]
+        main.assets.srcDirs  += [rootProject.file('../../../../v016/lo/android/assets')]
+        android8.assets.srcDirs = ['src/universal/assets', rootProject.file('../../../../v016/lo/android/assets')]
+    }
+    buildFeatures { buildConfig true }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
+    androidResources { noCompress += []; ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~' }
+    packagingOptions { jniLibs { useLegacyPackaging true; keepDebugSymbols += ['**/*.so'] } }
+    lint { abortOnError false; checkReleaseBuilds false }
+}
+
+// v0.1.8: versionCode riêng cho từng APK theo ABI (Play/trình cài đặt chọn đúng bản, cài đè được bản cũ)
+def ABI_CODES = ['armeabi-v7a': 1, 'arm64-v8a': 2, 'x86_64': 3]
+android.applicationVariants.all { variant ->
+    variant.outputs.each { output ->
+        def abi = output.getFilter(com.android.build.OutputFile.ABI)
+        if (abi != null) output.versionCodeOverride = variant.productFlavors[0].versionCode + ABI_CODES.get(abi, 0)
+    }
+}

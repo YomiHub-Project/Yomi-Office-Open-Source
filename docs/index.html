@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Yomi-Office Open Source — Bộ văn phòng mã nguồn mở cho Android & Windows</title>
+<meta name="description" content="Word, Excel, PowerPoint, PDF, CamScanner, MathType, Trợ lý A.I — miễn phí, ngoại tuyến, Android 6.0+ và Windows 7+.">
+<link rel="icon" href="assets/favicon.png"><link rel="stylesheet" href="style.css"></head>
+<body>
+<header>
+  <div class="nav"><img src="assets/logo.png" alt=""><b>Yomi-Office Open Source</b>
+    <a class="on" href="index.html">Trang chủ</a><a href="privacy.html">Chính sách quyền riêng tư</a>
+    <a href="https://github.com/YomiHub-Project/Yomi-Office-Open-Source">GitHub</a></div>
+  <div class="hero"><img src="assets/logo.png" alt="Yomi-Office Open Source">
+    <h1>Yomi-Office Open Source</h1>
+    <p>Bộ ứng dụng văn phòng mã nguồn mở, miễn phí, chạy ngoại tuyến trên Android 6.0+ và Windows 7+: Word · Excel · PowerPoint · PDF · CamScanner · MathType · Trợ lý A.I</p>
+    <a class="btn" id="dl" href="https://github.com/YomiHub-Project/Yomi-Office-Open-Source/releases/latest">⬇️ Tải về bản mới nhất</a>
+    <span class="ver" id="ver">Phiên bản mới nhất trên GitHub Releases</span></div>
+</header>
+<main>
+  <h2>Tính năng</h2>
+  <div class="grid">
+    <div class="card"><h3>📄 Word</h3><p>Ribbon đầy đủ, thước kẻ, phân trang thật, phối thư từ Excel, mục lục, phương trình, macro VBA (.docm).</p></div>
+    <div class="card"><h3>📊 Excel</h3><p>Hơn 500 hàm Excel 365, liên kết nhiều sheet và nhiều bảng tính, PivotTable, định dạng có điều kiện, VBA (.xlsm).</p></div>
+    <div class="card"><h3>📽️ PowerPoint</h3><p>Trình chiếu, chuyển tiếp và hoạt hình lưu vào .pptx, ghi thuyết minh, VBA (.pptm).</p></div>
+    <div class="card"><h3>📕 PDF</h3><p>Đọc, chú thích, ký, mật khẩu, nén, ghép, ảnh ↔ PDF, PDF → Word/PowerPoint/Excel, OCR tiếng Việt ngoại tuyến.</p></div>
+    <div class="card"><h3>📷 CamScanner</h3><p>Chụp tài liệu, tự nhận mép, nắn phối cảnh, lọc đen trắng, xuất PDF.</p></div>
+    <div class="card"><h3>∑ MathType</h3><p>Soạn công thức LaTeX / MathML và chèn vào tài liệu.</p></div>
+    <div class="card"><h3>✨ Trợ lý A.I</h3><p>Ngoại tuyến, Web (không/có đăng nhập), khóa API lưu trên máy, Free Claude Code, Ollama, LM Studio.</p></div>
+    <div class="card"><h3>☁️ Đám mây · DeX · TV</h3><p>Google Drive, OneDrive, Dropbox, MediaFire; giao diện Samsung DeX; trình chiếu lên TV; Quick Share.</p></div>
+  </div>
+  <h2>Tải về</h2>
+  <p class="muted" id="note">Danh sách dưới đây được lấy tự động từ bản phát hành mới nhất trên GitHub.</p>
+  <table><thead><tr><th>Tệp cài đặt</th><th>Dành cho</th><th>Dung lượng</th></tr></thead><tbody id="files">
+    <tr><td colspan="3"><a href="https://github.com/YomiHub-Project/Yomi-Office-Open-Source/releases/latest">Mở trang Releases</a></td></tr></tbody></table>
+</main>
+<footer><div><span>© YomiHub Project · Mã nguồn mở</span><a href="index.html">Trang chủ</a><a href="privacy.html">Chính sách quyền riêng tư</a><a href="https://github.com/YomiHub-Project/Yomi-Office-Open-Source/releases">Tất cả phiên bản</a></div></footer>
+<script>
+(function(){
+  function who(n){var m;
+    if(m=/-(Android10plus|Android8-9|Android6-7)-(arm64-v8a|armeabi-v7a|x86_64)\.apk$/.exec(n))return ({Android10plus:'Android 10 trở lên',"Android8-9":'Android 8.0 – 9',"Android6-7":'Android 6.0 – 7.1'})[m[1]]+' · '+m[2];
+    if(m=/-(Win10-11|Win7-8\.1)-(x64|x86|ARM64)(-Setup\.exe|\.msi|-portable\.zip)$/.exec(n))return (m[1]=='Win10-11'?'Windows 10/11':'Windows 7/8.1')+' '+m[2]+' · '+(m[3]=='-Setup.exe'?'Cài đặt (.exe)':m[3]=='.msi'?'Cài đặt (.msi)':'Portable (không cần cài)');
+    if(/\.appxbundle$/.test(n))return 'Windows 10 (1809+) / 11 · gói Microsoft Store';
+    return null;}
+  var x=new XMLHttpRequest();x.open('GET','https://api.github.com/repos/YomiHub-Project/Yomi-Office-Open-Source/releases/latest');
+  x.onload=function(){try{var r=JSON.parse(x.responseText);if(!r.tag_name)return;
+    document.getElementById('ver').textContent='Phiên bản mới nhất: '+r.tag_name+(r.published_at?' · '+r.published_at.slice(0,10):'');
+    var rows=(r.assets||[]).filter(function(a){return who(a.name)}).sort(function(a,b){return a.name<b.name?-1:1}).map(function(a){
+      return '<tr><td><a href="'+a.browser_download_url+'">'+a.name+'</a></td><td>'+who(a.name)+'</td><td>'+(a.size/1048576).toFixed(1)+' MB</td></tr>'});
+    if(rows.length)document.getElementById('files').innerHTML=rows.join('');}catch(e){}};
+  x.send();
+})();
+</script>
+</body></html>

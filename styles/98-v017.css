@@ -1,0 +1,17 @@
+/* v0.1.7: Web editor aligned with the Native runtime window (OfficeUi.cs palette: Chrome #F3F3F3, Line #E0E0E0,
+   Text #242424, Sub #616161, Hover #E6E6E6, Press #D4D4D4, Workspace #E9E9E9; Word #185ABD, Excel #107C41, PowerPoint #C43E1C) */
+.titlebar { background: #f3f3f3; border-bottom: 0; }
+.qat-b:hover, .tb-title:hover { background: #e6e6e6; }
+.qat-b:active { background: #d4d4d4; }
+.rb-tabs { background: #f3f3f3; height: 32px; }
+.rb-tab { font-size: 13px; color: #616161; height: 28px; }
+.rb-tab:hover { background: #e6e6e6; }
+.rb-tab.on { font-weight: 600; color: #242424; }
+.rb-tab.on:after { height: 3px; left: 8px; right: 8px; }
+.ribbon { border-bottom: 1px solid #e0e0e0; box-shadow: none; }
+.statusbar { background: #f3f3f3; border-top: 1px solid #e0e0e0; color: #616161; }
+.wd-scroll, .pp-stage, .pdf-scroll { background: #e9e9e9; }
+.xl-tab { background: #f3f3f3; }
+.xl-tab.on { background: #fff; color: var(--accent, #107c41); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent, #107c41); }
+/* same mouse pointer as the native Excel grid (white "fat cross") */
+.xl-scroll { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22'><path d='M8 1h6v7h7v6h-7v7H8v-7H1V8h7z' fill='white' stroke='black' stroke-width='1.2'/></svg>") 11 11, cell; }
