@@ -260,85 +260,96 @@ try {
       LogResult 'APPX' 'Authenticode signature' ($null -ne $sig.SignerCertificate) ("status=$($sig.Status) subj=$($sig.SignerCertificate.Subject)")
     }
 
-    # Test Portable ZIP launch & HTTP API
-    $portZip = Join-Path $OUT_WIN "Windows 10-11\$SLUG-$VER-$Edition-portable.zip"
-    $portDir = Join-Path $BLD 'portable_test'
-    if (Test-Path $portDir) { Remove-Item $portDir -Recurse -Force }
-    [System.IO.Compression.ZipFile]::ExtractToDirectory($portZip, $portDir)
-    $portExe = Join-Path $portDir 'OfficeOpenSource.exe'
-    $portFileP = Join-Path $portDir 'data\server.port'
-    $pPort = Start-Process $portExe -PassThru
-    $hwnd = Wait-MainWindow $pPort 20
-    $portNum = Wait-ServerPort $portFileP 20
-    $apiOk = $false; $scanOk = $false; $detail = "port=$portNum"
-    if ($portNum -gt 0) {
-      Start-Sleep -Seconds 2
-      try {
-        $info = Get-HttpJson "http://127.0.0.1:$portNum/api/info"
-        $scan = Post-HttpJson "http://127.0.0.1:$portNum/api/scan_office" '{}'
-        $apiOk = ($info.version -eq $VER -and $info.portable -eq $true -and $info.msi -eq $false)
-        $scanOk = ($scan.ok -eq $true -and $scan.files.Count -ge 20)
-        $detail = "ver=$($info.version) portable=$($info.portable) msi=$($info.msi) scanFiles=$($scan.files.Count) title=$($pPort.MainWindowTitle)"
-      } catch { $detail = "err=$($_.Exception.Message)" }
-    }
-    Capture-Window $hwnd (Join-Path $SHOTS '01_portable_home.png')
-    LogResult 'Installer' 'Portable ZIP runtime + API' ($apiOk -and $scanOk) $detail
-    try { $pPort.CloseMainWindow() | Out-Null; Start-Sleep -Milliseconds 600; if (-not $pPort.HasExited) { $pPort.Kill() } } catch {}
-
-    # Preserve pre-existing install dir state before testing MSI & Setup.exe
+    # Test Portable ZIP, MSI, and Setup.exe across Win7-8.1-x86, Win7-8.1-x64, Win10-11-x86, Win10-11-x64
+    $installMatrix = @(
+      @{ Ed='Win7-8.1-x86'; Sub='Windows 7-8.1' },
+      @{ Ed='Win7-8.1-x64'; Sub='Windows 7-8.1' },
+      @{ Ed='Win10-11-x86'; Sub='Windows 10-11' },
+      @{ Ed='Win10-11-x64'; Sub='Windows 10-11' }
+    )
     $localProg = Join-Path $env:LOCALAPPDATA 'Programs\YomiOfficeOpenSource'
-    $msiFile = Join-Path $OUT_WIN "Windows 10-11\$SLUG-$VER-$Edition.msi"
-    $msiLog  = Join-Path $BLD 'msi_install.log'
-    $pMsiInst = Start-Process 'msiexec.exe' -ArgumentList "/i `"$msiFile`" /qn /l*v `"$msiLog`"" -Wait -PassThru
-    $msiFlagExists = Test-Path (Join-Path $localProg 'installed_by_msi.txt')
-    $msiExe = Join-Path $localProg 'OfficeOpenSource.exe'
-    $msiApiOk = $false; $msiDetail = "exit=$($pMsiInst.ExitCode) flag=$msiFlagExists"
-    if ($pMsiInst.ExitCode -eq 0 -and (Test-Path $msiExe)) {
-      $appPortFile = Join-Path $env:LOCALAPPDATA 'OfficeOpenSource\server.port'
-      Remove-Item $appPortFile -Force -EA SilentlyContinue
-      $pm = Start-Process $msiExe -PassThru
-      $hm = Wait-MainWindow $pm 20
-      $mp = Wait-ServerPort $appPortFile 20
-      if ($mp -gt 0) {
-        Start-Sleep -Seconds 2
-        try {
-          $im = Get-HttpJson "http://127.0.0.1:$mp/api/info"
-          $msiApiOk = ($im.version -eq $VER -and $im.msi -eq $true -and $im.portable -eq $false)
-          $msiDetail += " ver=$($im.version) msi=$($im.msi) title=$($pm.MainWindowTitle)"
-        } catch { $msiDetail += " err=$($_.Exception.Message)" }
-      }
-      Capture-Window $hm (Join-Path $SHOTS '02_msi_home.png')
-      try { $pm.CloseMainWindow() | Out-Null; Start-Sleep -Milliseconds 600; if (-not $pm.HasExited) { $pm.Kill() } } catch {}
-    }
-    LogResult 'Installer' 'MSI install + /api/info msi=true' ($pMsiInst.ExitCode -eq 0 -and $msiFlagExists -and $msiApiOk) $msiDetail
-    $pMsiUn = Start-Process 'msiexec.exe' -ArgumentList "/x `"$msiFile`" /qn" -Wait -PassThru
-    LogResult 'Installer' 'MSI clean uninstall' ($pMsiUn.ExitCode -eq 0 -and -not (Test-Path $msiExe)) ("exit=$($pMsiUn.ExitCode)")
+    $appPortFile = Join-Path $env:LOCALAPPDATA 'OfficeOpenSource\server.port'
 
-    # Test Setup.exe silent install (/S) & --uninstall
-    $setupExe = Join-Path $OUT_WIN "Windows 10-11\$SLUG-$VER-$Edition-Setup.exe"
-    $pSetup = Start-Process $setupExe -ArgumentList '/S' -Wait -PassThru
-    $setupInstalledExe = Join-Path $localProg 'OfficeOpenSource.exe'
-    $noMsiFlag = -not (Test-Path (Join-Path $localProg 'installed_by_msi.txt'))
-    $regExists = Test-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\YomiOfficeOpenSource'
-    $setupApiOk = $false; $sDetail = "exit=$($pSetup.ExitCode) reg=$regExists noMsiFlag=$noMsiFlag"
-    if ($pSetup.ExitCode -eq 0 -and (Test-Path $setupInstalledExe)) {
-      $appPortFile = Join-Path $env:LOCALAPPDATA 'OfficeOpenSource\server.port'
-      Remove-Item $appPortFile -Force -EA SilentlyContinue
-      $ps = Start-Process $setupInstalledExe -PassThru
-      $hs = Wait-MainWindow $ps 20
-      $sp = Wait-ServerPort $appPortFile 20
-      if ($sp -gt 0) {
+    foreach ($row in $installMatrix) {
+      $ed = $row.Ed; $sub = $row.Sub
+      $portZip = Join-Path $OUT_WIN "$sub\$SLUG-$VER-$ed-portable.zip"
+      $portDir = Join-Path $BLD "portable_$ed"
+      if (Test-Path $portDir) { Remove-Item $portDir -Recurse -Force }
+      [System.IO.Compression.ZipFile]::ExtractToDirectory($portZip, $portDir)
+      $portExe = Join-Path $portDir 'OfficeOpenSource.exe'
+      $portFileP = Join-Path $portDir 'data\server.port'
+      $pPort = Start-Process $portExe -PassThru
+      $hwnd = Wait-MainWindow $pPort 20
+      $portNum = Wait-ServerPort $portFileP 20
+      $apiOk = $false; $scanOk = $false; $detail = "port=$portNum"
+      if ($portNum -gt 0) {
         Start-Sleep -Seconds 2
         try {
-          $is = Get-HttpJson "http://127.0.0.1:$sp/api/info"
-          $setupApiOk = ($is.version -eq $VER -and $is.msi -eq $false)
-          $sDetail += " ver=$($is.version) msi=$($is.msi) title=$($ps.MainWindowTitle)"
-        } catch { $sDetail += " err=$($_.Exception.Message)" }
+          $info = Get-HttpJson "http://127.0.0.1:$portNum/api/info"
+          $scan = Post-HttpJson "http://127.0.0.1:$portNum/api/scan_office" '{}'
+          $apiOk = ($info.version -eq $VER -and $info.portable -eq $true -and $info.msi -eq $false)
+          $scanOk = ($scan.ok -eq $true -and $scan.files.Count -ge 20)
+          $detail = "ver=$($info.version) portable=$($info.portable) msi=$($info.msi) scan=$($scan.files.Count)"
+        } catch { $detail = "err=$($_.Exception.Message)" }
       }
-      Capture-Window $hs (Join-Path $SHOTS '03_setup_home.png')
-      try { $ps.CloseMainWindow() | Out-Null; Start-Sleep -Milliseconds 600; if (-not $ps.HasExited) { $ps.Kill() } } catch {}
+      Capture-Window $hwnd (Join-Path $SHOTS "01_portable_${ed}.png")
+      LogResult 'Installer' "$ed portable.zip + API" ($apiOk -and $scanOk) $detail
+      try { $pPort.CloseMainWindow() | Out-Null; Start-Sleep -Milliseconds 600; if (-not $pPort.HasExited) { $pPort.Kill() } } catch {}
+      Start-Sleep -Milliseconds 400
+      if ($ed -ne $Edition) { Remove-Item $portDir -Recurse -Force -EA SilentlyContinue }
+
+      # MSI install + API + clean uninstall
+      $msiFile = Join-Path $OUT_WIN "$sub\$SLUG-$VER-$ed.msi"
+      $msiLog  = Join-Path $BLD "msi_${ed}.log"
+      $pMsiInst = Start-Process 'msiexec.exe' -ArgumentList "/i `"$msiFile`" /qn /l*v `"$msiLog`"" -Wait -PassThru
+      $msiFlagExists = Test-Path (Join-Path $localProg 'installed_by_msi.txt')
+      $msiExe = Join-Path $localProg 'OfficeOpenSource.exe'
+      $msiApiOk = $false; $msiDetail = "exit=$($pMsiInst.ExitCode) flag=$msiFlagExists"
+      if ($pMsiInst.ExitCode -eq 0 -and (Test-Path $msiExe)) {
+        Remove-Item $appPortFile -Force -EA SilentlyContinue
+        $pm = Start-Process $msiExe -PassThru
+        $hm = Wait-MainWindow $pm 20
+        $mp = Wait-ServerPort $appPortFile 20
+        if ($mp -gt 0) {
+          Start-Sleep -Seconds 2
+          try {
+            $im = Get-HttpJson "http://127.0.0.1:$mp/api/info"
+            $msiApiOk = ($im.version -eq $VER -and $im.msi -eq $true -and $im.portable -eq $false)
+            $msiDetail += " ver=$($im.version) msi=$($im.msi)"
+          } catch { $msiDetail += " err=$($_.Exception.Message)" }
+        }
+        Capture-Window $hm (Join-Path $SHOTS "02_msi_${ed}.png")
+        try { $pm.CloseMainWindow() | Out-Null; Start-Sleep -Milliseconds 600; if (-not $pm.HasExited) { $pm.Kill() } } catch {}
+      }
+      LogResult 'Installer' "$ed .msi + msi=true" ($pMsiInst.ExitCode -eq 0 -and $msiFlagExists -and $msiApiOk) $msiDetail
+      $pMsiUn = Start-Process 'msiexec.exe' -ArgumentList "/x `"$msiFile`" /qn" -Wait -PassThru
+      LogResult 'Installer' "$ed .msi uninstall" ($pMsiUn.ExitCode -eq 0 -and -not (Test-Path $msiExe)) ("exit=$($pMsiUn.ExitCode)")
+
+      # Setup.exe /S install + API
+      $setupExe = Join-Path $OUT_WIN "$sub\$SLUG-$VER-$ed-Setup.exe"
+      $pSetup = Start-Process $setupExe -ArgumentList '/S' -Wait -PassThru
+      $setupInstalledExe = Join-Path $localProg 'OfficeOpenSource.exe'
+      $noMsiFlag = -not (Test-Path (Join-Path $localProg 'installed_by_msi.txt'))
+      $regExists = Test-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\YomiOfficeOpenSource'
+      $setupApiOk = $false; $sDetail = "exit=$($pSetup.ExitCode) reg=$regExists noMsiFlag=$noMsiFlag"
+      if ($pSetup.ExitCode -eq 0 -and (Test-Path $setupInstalledExe)) {
+        Remove-Item $appPortFile -Force -EA SilentlyContinue
+        $ps = Start-Process $setupInstalledExe -PassThru
+        $hs = Wait-MainWindow $ps 20
+        $sp = Wait-ServerPort $appPortFile 20
+        if ($sp -gt 0) {
+          Start-Sleep -Seconds 2
+          try {
+            $is = Get-HttpJson "http://127.0.0.1:$sp/api/info"
+            $setupApiOk = ($is.version -eq $VER -and $is.msi -eq $false)
+            $sDetail += " ver=$($is.version) msi=$($is.msi)"
+          } catch { $sDetail += " err=$($_.Exception.Message)" }
+        }
+        Capture-Window $hs (Join-Path $SHOTS "03_setup_${ed}.png")
+        try { $ps.CloseMainWindow() | Out-Null; Start-Sleep -Milliseconds 600; if (-not $ps.HasExited) { $ps.Kill() } } catch {}
+      }
+      LogResult 'Installer' "$ed -Setup.exe /S + msi=false" ($pSetup.ExitCode -eq 0 -and $regExists -and $noMsiFlag -and $setupApiOk) $sDetail
     }
-    LogResult 'Installer' 'Setup.exe /S + /api/info msi=false' ($pSetup.ExitCode -eq 0 -and $regExists -and $noMsiFlag -and $setupApiOk) $sDetail
   }
 
   # =========================================================================

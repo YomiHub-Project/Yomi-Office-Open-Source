@@ -32,7 +32,7 @@
 |---|---|
 | Emulator Android 6.0 (API 23, x86_64) | selftest **49/49**; mở 8/8 tệp thật (.doc, .docx, .xlsm, .pptx) không văng; quét tệp 8/8 |
 | Emulator Android 14 (API 34, x86_64) + màn hình phụ TV | selftest **49/49**; mở tệp thật không văng |
-| Samsung Galaxy Note 9 (Android 10, arm64) | xem mục Kiểm thử thiết bị thật trong TECHNICAL_UPDATE_NOTES |
+| Samsung Galaxy Note 9 (Android 10, arm64) | selftest **49/49**; mở **23/23** tệp Test Office không văng; quét 105 tệp; DeX, màn hình phụ TV, Quick Share, Trợ lý A.I (gồm Free Claude Code), PDF, MathType, CamScanner: đạt |
 | Windows 7/8.1, 10/11 | xem TECHNICAL_UPDATE_NOTES (so sánh với Microsoft Office) |
 
 ## 5. Hạn chế đã biết
