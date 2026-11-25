@@ -1,0 +1,17 @@
+# 12 — Nhật ký phiên làm việc
+
+## 25/11/2026 — v0.1.8 (Claude + Google Antigravity /swarm)
+- Chủ dự án chốt: repo `YomiHub-Project/Yomi-Office-Open-Source`; Android chia CPU × phiên bản (9 APK); Windows: Win7–8.1 (x64/x86) + Win10–11 (x64/x86/ARM64) × (exe, msi, portable) + appxbundle.
+- Claude: đổi tên → Yomi-Office Open Source; Cập nhật phần mềm thêm GitHub Releases; Free Claude Code; quét tệp Office (#28, sửa lỗi chưa từng được nối); 9 APK; selftest v018; A.I Brain.
+- Antigravity: robocopy v017→v018, tải logo, `ref-sync` (git), `win-dev` (Windows, MSI, appxbundle, A.I native, `/api/scan_office`).
+- (Phiên ghi tiếp kết quả build/kiểm thử/phát hành bên dưới.)
+- 16:47 phiên Claude mới tiếp quản (phiên trước dừng giữa chừng). Trạng thái 16:51: Android xong 9 APK + kiểm thử (emu A6 19/19, A14 16/16, Note 9 37/39 — 2 lỗi do script); GitHub đã đẩy mã nguồn `9945e17` + tạo Release v0.1.8, job 070 đang tải 17 tệp; Windows 9/16 tệp.
+- 16:55 giao Antigravity mục 8 (`YEU_CAU_antigravity.md`): xong Win10-11 x64/ARM64 + appxbundle, đóng gói lại các bản có `licenses.txt` cũ, ghi `coord\WIN_DONE.txt`, kiểm thử Windows + so sánh 23 tệp với MS Office. Antigravity ước tính: build xong ~17:45–17:55, so sánh MS Office ~18:00–18:10, đóng gói lại thêm ~55 phút.
+- Job `090_after_win_publish` (Claude) chờ `WIN_DONE.txt` + `070_publish.done` rồi tự chạy `make_manifest_v018.ps1` + `publish_v018.ps1` (đẩy GitHub đợt 2, bổ sung tệp còn thiếu, cập nhật README).
+- Bài học: runner có lúc chạy trùng 1 job → sinh `.done` + log rỗng ngay lập tức trong khi tiến trình thật vẫn chạy; kiểm tra bằng `Win32_Process` CommandLine thay vì tin `.done`.
+- 17:04 chủ dự án yêu cầu đẩy ngay phần đã xong: job 093 → commit `4ccaccb`, Release 20/20 tệp (2.96 GB). `publish_v018.ps1` thêm `-MinAgeSec`, cập nhật nội dung Release.
+- 17:26 kiểm tra theo lịch: Windows build nhanh hơn dự kiến — đã có Win10-11 x64 (.msi), ARM64 (3 tệp), Universal (3 tệp); Antigravity đang đóng gói lại Win7-8.1 x86 (licenses) + appxbundle. Chưa có `WIN_DONE.txt`; chưa kiểm thử Windows; job 090 vẫn chờ.
+- 18:42 Antigravity xong Windows (`WIN_DONE.txt`). 18:47 job 090 dừng vì trùng tên `.appxbundle`/`DevCert.cer` ở 2 thư mục → publish/manifest giờ bỏ bản trùng cùng dung lượng. 19:03 job 094 mất mạng; 19:07 job 095 push `255c666`, đang tải bộ cài (mạng ~0.34 MB/s). Bài học: cầu nối Claude ↔ máy và mạng GitHub cùng rớt khi mạng nhà chập chờn; curl không có `--max-time` nên job có thể treo — chạy lại an toàn (bỏ qua tệp đã đủ).
+- 19:46 chủ dự án quyết định: sai khác hiển thị so với MS Office (mục 29) → v0.1.9; tạo `v018\coord\BACKLOG_v0.1.9.md`, báo Antigravity (YEU_CAU #11), cập nhật RELEASE_NOTES (hạn chế + kết quả Windows). Publish: `.appxbundle` 691 MB đang tải (~0.7 MB/s); job 098 chờ sau 095 để so SHA-256 (`digest`) và tải lại bản đóng gói lại cùng dung lượng.
+- 20:15 Kiểm thử Windows lượt 2 (Antigravity): portable/.msi/Setup.exe 4/4 mỗi loại; 21/23 tệp mở cạnh MS Office; selftest Windows chưa xác nhận (script). Claude xem ảnh UI 05–09: PDF/MathType/CamScanner/A.I hiển thị đúng. Bài học: không tin nhãn PASS/FAIL của script — mở ảnh kiểm tra (md5 trùng nhau = chụp cùng 1 màn hình). Publish: 7/31 lúc 20:11, mạng ~0.2 MB/s.
+- 20:33 **Release v0.1.8 hoàn tất**: 31 tệp (9 APK, 5 edition Windows + Universal × Setup/.msi/portable, .appxbundle, DevCert.cer, version.json, SHA256), SHA-256 khớp 28/28 (so trường `digest` GitHub). Bài học: so dung lượng không đủ — bản đóng gói lại có thể cùng dung lượng; luôn so `digest`.
