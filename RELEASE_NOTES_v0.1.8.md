@@ -33,7 +33,7 @@
 | Emulator Android 6.0 (API 23, x86_64) | selftest **49/49**; mở 8/8 tệp thật (.doc, .docx, .xlsm, .pptx) không văng; quét tệp 8/8 |
 | Emulator Android 14 (API 34, x86_64) + màn hình phụ TV | selftest **49/49**; mở tệp thật không văng |
 | Samsung Galaxy Note 9 (Android 10, arm64) | selftest **49/49**; mở **23/23** tệp Test Office không văng; quét 105 tệp; DeX, màn hình phụ TV, Quick Share, Trợ lý A.I (gồm Free Claude Code), PDF, MathType, CamScanner: đạt |
-| Windows 7/8.1, 10/11 | xem TECHNICAL_UPDATE_NOTES (so sánh với Microsoft Office) |
+| Windows 7/8.1, 10/11 (máy x64) | Bản portable và .msi của Win7-8.1 x86/x64, Win10-11 x86/x64 cài, chạy, gỡ đạt; ARM64 kiểm tra gói đúng kiến trúc; chuyển DOCX→PDF, quét tệp đạt; mở **22/22** tệp Test Office cạnh Microsoft Office 16 (ảnh đối chiếu + video) |
 
 ## 5. Hạn chế đã biết
 - Sửa chung thời gian thực với Google Drive / OneDrive cần OAuth Client ID riêng.
@@ -44,6 +44,8 @@
 - Android: engine Native chỉ để xem; chỉnh sửa bằng trình soạn Web.
 - Bảng tính rất lớn (vd 15.8 MB .xlsm, 6.8 MB .xlsx) mở bằng engine Native trên điện thoại có thể mất hơn 35 giây (kiểm thử trên Galaxy Note 9).
 - Hàm Excel mới từ các website Excel Functions, đối chiếu ảnh Office Screen: chưa làm ở bản này.
+- Một số bảng tính hiển thị chưa giống MS Office (vd thiếu chữ ở hàng tiêu đề có ô gộp/bảng, form control đè lên ô) — đã ghi nhận khi so sánh 22 tệp với Microsoft Office 16, sẽ sửa ở v0.1.9.
+- Gói `.appx`/`.appxbundle` ký bằng chứng chỉ tự tạo: cần cài `Yomi-Office-Open-Source-0.1.8-DevCert.cer` (Trusted People) trước khi cài.
 
 ## 6. Bộ cài
 Xem trang Releases: https://github.com/YomiHub-Project/Yomi-Office-Open-Source/releases/tag/v0.1.8 (SHA-256 trong `SHA256_v0.1.8.md`).

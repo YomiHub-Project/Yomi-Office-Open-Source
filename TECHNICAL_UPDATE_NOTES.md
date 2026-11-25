@@ -98,8 +98,23 @@ Chủ dự án yêu cầu tạo và duy trì tài liệu này ngày 25/10/2026. 
 ### D. Windows (Antigravity)
 - Host Windows (`v018\src\platform\windows\*.cs`, 9 tệp C#): đổi tên/logo, `/api/info` trả `"msi"`, cập nhật qua `msiexec /i … /passive`, `POST /api/scan_office`, Free Claude Code, `ListGitHub`; biên dịch Roslyn `csc.exe` 0 lỗi.
 - `build_v018_windows.ps1` (UTF-8 BOM, `$PROJ` động): sửa WiX `CNDL0230` (GUID MD5 cho KeyPath HKCU), `CNDL0117`, `-sice:ICE60`; loader ARM64; thêm bản Universal (All-AnyCPU → `Yomi-Office-Open-Source-0.1.8-Setup.exe/.msi/-portable.zip`, không ghi edition, giống quy ước bản phổ thông v0.1.7).
-- Tiến độ lúc 17:26: đã có Win7-8.1 x86/x64, Win10-11 x86/x64/ARM64, Universal (Setup + .msi + portable); đang đóng gói lại các bản build trước 16:20 (`licenses.txt` cũ) và `.appxbundle`. Kiểm thử cài đặt + so sánh 23 tệp với MS Office: chờ (`test_compare_v018.ps1`).
-_(Kết quả kiểm thử Windows sẽ hợp nhất khi có `coord\WIN_DONE.txt`.)_
+- **18:42 Antigravity ghi `WIN_DONE.txt`**: đủ Win7-8.1 x86/x64, Win10-11 x86/x64/ARM64, Universal (Setup + .msi + portable), `.appx` từng kiến trúc, `Yomi-Office-Open-Source-0.1.8.appxbundle` (691 MB), `DevCert.cer`; các bản có `licenses.txt` cũ đã đóng gói lại. Kiểm thử cài đặt (`build\qa_win`) đang chạy; ảnh `02_msi_Win7-8.1-*` chụp quá sớm (màn hình chờ), `04_yomi_home_screen` trắng → yêu cầu chụp lại (`YEU_CAU_antigravity.md` #9).
+- (cũ) Tiến độ lúc 17:26: đã có Win7-8.1 x86/x64, Win10-11 x86/x64/ARM64, Universal (Setup + .msi + portable); đang đóng gói lại các bản build trước 16:20 (`licenses.txt` cũ) và `.appxbundle`. Kiểm thử cài đặt + so sánh 23 tệp với MS Office: chờ (`test_compare_v018.ps1`).
+#### Kiểm thử Windows (Antigravity, `test_compare_v018.ps1`, 18:45–19:37; máy Windows x64 + Microsoft Office 16)
+Báo cáo: `v018\coord\windows_qa_report.md` (lượt 1: 41/10; lượt 2 sau khi sửa script: 30/9) · ảnh `v018\shots\windows` · video `v018\video\windows\windows_v018_qa.mp4`.
+
+| Hạng mục | Kết quả | Ghi chú |
+|---|---|---|
+| Đủ bộ cài đầu ra | Đạt | 27 tệp (5 edition + Universal × Setup/.msi/portable, 3 `.appx`, `.appxbundle`, `DevCert.cer`) |
+| ARM64 (kiểm tra gói trên máy x64) | Đạt | `WebView2Loader.dll` arm64 đúng SHA-256, `edition.txt = Win10-11-ARM64` |
+| `.appx`/`.appxbundle` | Có chữ ký, **chưa tin cậy** | `CN=OfficeOpenSourceDev` tự ký → `UnknownError`; phải cài `DevCert.cer` trước |
+| portable.zip ×4 (Win7-8.1 x86/x64, Win10-11 x86/x64) | **4/4** | `/api/info` 0.1.8, `portable=true`; `/api/scan_office` 929–2853 tệp |
+| .msi ×4 | **4/4** cài + gỡ | `msiexec /qn` exit 0, `msi=true` |
+| Setup.exe /S ×4 | **4/4** (lượt 2) | Lượt 1 FAIL do script tìm sai khóa; khóa Uninstall thực tế `OfficeOpenSource` (DisplayName "Yomi-Office Open Source", 0.1.8) |
+| LOK `--convert` DOCX→PDF, `/api/scan_office` | Đạt | PDF 112 KB; quét 4743–5000 tệp |
+| Giao diện: Công cụ PDF, MathType, CamScanner, Trợ lý A.I | Hiển thị đúng (Claude xem ảnh `06–09_ui_*.png`) | Script vẫn đánh FAIL vì so khớp chuỗi; `05_ui_devscan` chỉ hiện Trang chủ, chưa thấy tab "Trên thiết bị" |
+| `#selftest` trên Windows (Chrome headless) | **Chưa xác nhận** | `matched=False` (không đọc được dòng kết quả); cùng bundle web đạt 49/49 trên Android |
+| Mở 23 tệp Test Office cạnh MS Office 16 | **21/23** hiển thị; 2 bảng tính lớn (15.8 MB `.xlsm`, 6.8 MB `.xlsx`) quá 25 s vẫn "Đang mở…" | Không văng. Sai khác hiển thị (vd `Theo dõi kho_CLC.xlsm`) → `BACKLOG_v0.1.9.md` |
 
 ### E. Kiểm thử thiết bị thật Samsung Galaxy Note 9 (Antigravity)
 Thiết bị: SM-N960N, Android 10 (API 29), arm64-v8a, serial `281038ac31217ece`. Nguồn: `v018\coord\TIEN_DO_antigravity.md`.
@@ -124,6 +139,10 @@ Thiết bị: SM-N960N, Android 10 (API 29), arm64-v8a, serial `281038ac31217ece
 |---|---|---|
 | 16:47 | Đợt 1 (job 070) | Đẩy mã nguồn `9945e17` (257 tệp); tạo Release v0.1.8 (id 457911185); 17/17 tệp (9 APK + 8 bộ cài Windows); `releases/latest` = v0.1.8 |
 | 17:04 | Đợt 1b (job 093, chủ dự án yêu cầu) | Commit `4ccaccb` (README, ghi chú phát hành + kỹ thuật); cập nhật nội dung Release; thêm Win10-11-x64 Setup/portable, Win10-11-x86.msi → **20/20 tệp, 2.96 GB**; GitHub Pages bật (`main /docs`) |
-| chờ | Đợt 2 (job 090, tự chạy khi có `WIN_DONE.txt`) | `version.json` + `SHA256_v0.1.8.md`, các bộ cài Windows còn lại/đóng gói lại, `.appxbundle` |
+| 18:47 | Đợt 2 lần 1 (job 090) | `version.json` (25 mục) + `SHA256_v0.1.8.md` tạo xong; publish **DỪNG**: `.appxbundle` và `DevCert.cer` có 2 bản giống hệt ở `Windows\` và `Windows\Windows 10-11\` → sửa `publish_v018.ps1` / `make_manifest_v018.ps1`: cùng tên + cùng dung lượng thì giữ 1 bản, khác dung lượng thì vẫn dừng |
+| 19:03 | Đợt 2 lần 2 (job 094) | commit `255c666` tạo trên máy, push lỗi: máy mất mạng (`Could not connect to server`) |
+| 19:07–20:29 | Đợt 2 lần 3 (job 095) | push `4ccaccb..255c666`; tải `version.json`, `SHA256_v0.1.8.md`, `.appxbundle`, Universal, ARM64, các bản đóng gói lại (mạng 0.2–0.7 MB/s đến 20:25, sau đó ~10 MB/s); 1 lỗi `Win10-11-x64.msi` (curl 55, GitHub "Upload body timed out") |
+| 20:29–20:33 | Kiểm SHA-256 (job 098, `-SkipSource`) | `publish_v018.ps1` so `digest` của GitHub với SHA-256 tệp máy → tải lại `Win10-11-x64.msi` + 5 bộ cài đóng gói lại cùng dung lượng (Win7-8.1 x86/x64 .msi, Win7-8.1 x86 Setup, Win10-11 x86 Setup…) |
+| 20:34 | **Xác minh độc lập (Claude)** | Release v0.1.8: **31 tệp, 4.99 GB**; SHA-256 khớp **28/28** bộ cài với `SHA256_v0.1.8.md` (+ `version.json`, `SHA256_v0.1.8.md`, `DevCert.cer`); `releases/latest` = v0.1.8 |
 
 `publish_v018.ps1` mới: `-MinAgeSec` bỏ qua tệp vừa ghi (tránh tải tệp đang build); khi Release đã có thì cập nhật nội dung theo `RELEASE_NOTES_v0.1.8.md`; tải lại tệp khi kích thước khác.

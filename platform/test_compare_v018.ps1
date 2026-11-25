@@ -1,6 +1,7 @@
 ﻿# Yomi-Office Open Source v0.1.8 - Windows Installer Matrix, Feature QA, and MS Office Side-by-Side Comparison
 param(
   [switch]$SkipInstallTest,
+  [switch]$OnlySetupInInstall,
   [switch]$SkipFeatureTest,
   [switch]$SkipCompare,
   [switch]$NoVideo,
@@ -183,6 +184,21 @@ function Wait-MainWindow($proc, [int]$timeoutSec = 15) {
   return [IntPtr]::Zero
 }
 
+function Wait-DocWindow($proc, [string]$titleRegex, [int]$timeoutSec = 35) {
+  $deadline = (Get-Date).AddSeconds($timeoutSec)
+  while ((Get-Date) -lt $deadline) {
+    if ($proc.HasExited) { return [IntPtr]::Zero }
+    $proc.Refresh()
+    if ($proc.MainWindowHandle -ne [IntPtr]::Zero -and $proc.MainWindowTitle -match $titleRegex) {
+      return $proc.MainWindowHandle
+    }
+    Start-Sleep -Milliseconds 350
+  }
+  $proc.Refresh()
+  if (-not $proc.HasExited -and $proc.MainWindowHandle -ne [IntPtr]::Zero) { return $proc.MainWindowHandle }
+  return [IntPtr]::Zero
+}
+
 function Stop-Spawned([int[]]$beforePids, [string[]]$names) {
   foreach ($n in $names) {
     Get-Process -Name $n -EA SilentlyContinue | Where-Object { $beforePids -notcontains $_.Id } | ForEach-Object {
@@ -272,73 +288,77 @@ try {
 
     foreach ($row in $installMatrix) {
       $ed = $row.Ed; $sub = $row.Sub
-      $portZip = Join-Path $OUT_WIN "$sub\$SLUG-$VER-$ed-portable.zip"
-      $portDir = Join-Path $BLD "portable_$ed"
-      if (Test-Path $portDir) { Remove-Item $portDir -Recurse -Force }
-      [System.IO.Compression.ZipFile]::ExtractToDirectory($portZip, $portDir)
-      $portExe = Join-Path $portDir 'OfficeOpenSource.exe'
-      $portFileP = Join-Path $portDir 'data\server.port'
-      $pPort = Start-Process $portExe -PassThru
-      $hwnd = Wait-MainWindow $pPort 20
-      $portNum = Wait-ServerPort $portFileP 20
-      $apiOk = $false; $scanOk = $false; $detail = "port=$portNum"
-      if ($portNum -gt 0) {
-        Start-Sleep -Seconds 2
-        try {
-          $info = Get-HttpJson "http://127.0.0.1:$portNum/api/info"
-          $scan = Post-HttpJson "http://127.0.0.1:$portNum/api/scan_office" '{}'
-          $apiOk = ($info.version -eq $VER -and $info.portable -eq $true -and $info.msi -eq $false)
-          $scanOk = ($scan.ok -eq $true -and $scan.files.Count -ge 20)
-          $detail = "ver=$($info.version) portable=$($info.portable) msi=$($info.msi) scan=$($scan.files.Count)"
-        } catch { $detail = "err=$($_.Exception.Message)" }
-      }
-      Capture-Window $hwnd (Join-Path $SHOTS "01_portable_${ed}.png")
-      LogResult 'Installer' "$ed portable.zip + API" ($apiOk -and $scanOk) $detail
-      try { $pPort.CloseMainWindow() | Out-Null; Start-Sleep -Milliseconds 600; if (-not $pPort.HasExited) { $pPort.Kill() } } catch {}
-      Start-Sleep -Milliseconds 400
-      if ($ed -ne $Edition) { Remove-Item $portDir -Recurse -Force -EA SilentlyContinue }
-
-      # MSI install + API + clean uninstall
-      $msiFile = Join-Path $OUT_WIN "$sub\$SLUG-$VER-$ed.msi"
-      $msiLog  = Join-Path $BLD "msi_${ed}.log"
-      $pMsiInst = Start-Process 'msiexec.exe' -ArgumentList "/i `"$msiFile`" /qn /l*v `"$msiLog`"" -Wait -PassThru
-      $msiFlagExists = Test-Path (Join-Path $localProg 'installed_by_msi.txt')
-      $msiExe = Join-Path $localProg 'OfficeOpenSource.exe'
-      $msiApiOk = $false; $msiDetail = "exit=$($pMsiInst.ExitCode) flag=$msiFlagExists"
-      if ($pMsiInst.ExitCode -eq 0 -and (Test-Path $msiExe)) {
-        Remove-Item $appPortFile -Force -EA SilentlyContinue
-        $pm = Start-Process $msiExe -PassThru
-        $hm = Wait-MainWindow $pm 20
-        $mp = Wait-ServerPort $appPortFile 20
-        if ($mp -gt 0) {
-          Start-Sleep -Seconds 2
+      if (-not $OnlySetupInInstall) {
+        $portZip = Join-Path $OUT_WIN "$sub\$SLUG-$VER-$ed-portable.zip"
+        $portDir = Join-Path $BLD "portable_$ed"
+        if (Test-Path $portDir) { Remove-Item $portDir -Recurse -Force }
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($portZip, $portDir)
+        $portExe = Join-Path $portDir 'OfficeOpenSource.exe'
+        $portFileP = Join-Path $portDir 'data\server.port'
+        $pPort = Start-Process $portExe -PassThru
+        $hwnd = Wait-MainWindow $pPort 20
+        $portNum = Wait-ServerPort $portFileP 20
+        $apiOk = $false; $scanOk = $false; $detail = "port=$portNum"
+        if ($portNum -gt 0) {
+          Start-Sleep -Seconds 3
           try {
-            $im = Get-HttpJson "http://127.0.0.1:$mp/api/info"
-            $msiApiOk = ($im.version -eq $VER -and $im.msi -eq $true -and $im.portable -eq $false)
-            $msiDetail += " ver=$($im.version) msi=$($im.msi)"
-          } catch { $msiDetail += " err=$($_.Exception.Message)" }
+            $info = Get-HttpJson "http://127.0.0.1:$portNum/api/info"
+            $scan = Post-HttpJson "http://127.0.0.1:$portNum/api/scan_office" '{}'
+            $apiOk = ($info.version -eq $VER -and $info.portable -eq $true -and $info.msi -eq $false)
+            $scanOk = ($scan.ok -eq $true -and $scan.files.Count -ge 20)
+            $detail = "ver=$($info.version) portable=$($info.portable) msi=$($info.msi) scan=$($scan.files.Count)"
+          } catch { $detail = "err=$($_.Exception.Message)" }
         }
-        Capture-Window $hm (Join-Path $SHOTS "02_msi_${ed}.png")
-        try { $pm.CloseMainWindow() | Out-Null; Start-Sleep -Milliseconds 600; if (-not $pm.HasExited) { $pm.Kill() } } catch {}
-      }
-      LogResult 'Installer' "$ed .msi + msi=true" ($pMsiInst.ExitCode -eq 0 -and $msiFlagExists -and $msiApiOk) $msiDetail
-      $pMsiUn = Start-Process 'msiexec.exe' -ArgumentList "/x `"$msiFile`" /qn" -Wait -PassThru
-      LogResult 'Installer' "$ed .msi uninstall" ($pMsiUn.ExitCode -eq 0 -and -not (Test-Path $msiExe)) ("exit=$($pMsiUn.ExitCode)")
+        Capture-Window $hwnd (Join-Path $SHOTS "01_portable_${ed}.png")
+        LogResult 'Installer' "$ed portable.zip + API" ($apiOk -and $scanOk) $detail
+        try { $pPort.CloseMainWindow() | Out-Null; Start-Sleep -Milliseconds 600; if (-not $pPort.HasExited) { $pPort.Kill() } } catch {}
+        Start-Sleep -Milliseconds 400
+        if ($ed -ne $Edition) { Remove-Item $portDir -Recurse -Force -EA SilentlyContinue }
 
-      # Setup.exe /S install + API
+        # MSI install + API + clean uninstall
+        $msiFile = Join-Path $OUT_WIN "$sub\$SLUG-$VER-$ed.msi"
+        $msiLog  = Join-Path $BLD "msi_${ed}.log"
+        $pMsiInst = Start-Process 'msiexec.exe' -ArgumentList "/i `"$msiFile`" /qn /l*v `"$msiLog`"" -Wait -PassThru
+        $msiFlagExists = Test-Path (Join-Path $localProg 'installed_by_msi.txt')
+        $msiExe = Join-Path $localProg 'OfficeOpenSource.exe'
+        $msiApiOk = $false; $msiDetail = "exit=$($pMsiInst.ExitCode) flag=$msiFlagExists"
+        if ($pMsiInst.ExitCode -eq 0 -and (Test-Path $msiExe)) {
+          Remove-Item $appPortFile -Force -EA SilentlyContinue
+          $pm = Start-Process $msiExe -PassThru
+          $hm = Wait-MainWindow $pm 20
+          $mp = Wait-ServerPort $appPortFile 20
+          if ($mp -gt 0) {
+            Start-Sleep -Seconds 3
+            try {
+              $im = Get-HttpJson "http://127.0.0.1:$mp/api/info"
+              $msiApiOk = ($im.version -eq $VER -and $im.msi -eq $true -and $im.portable -eq $false)
+              $msiDetail += " ver=$($im.version) msi=$($im.msi)"
+            } catch { $msiDetail += " err=$($_.Exception.Message)" }
+          }
+          Capture-Window $hm (Join-Path $SHOTS "02_msi_${ed}.png")
+          try { $pm.CloseMainWindow() | Out-Null; Start-Sleep -Milliseconds 600; if (-not $pm.HasExited) { $pm.Kill() } } catch {}
+        }
+        LogResult 'Installer' "$ed .msi + msi=true" ($pMsiInst.ExitCode -eq 0 -and $msiFlagExists -and $msiApiOk) $msiDetail
+        $pMsiUn = Start-Process 'msiexec.exe' -ArgumentList "/x `"$msiFile`" /qn" -Wait -PassThru
+        LogResult 'Installer' "$ed .msi uninstall" ($pMsiUn.ExitCode -eq 0 -and -not (Test-Path $msiExe)) ("exit=$($pMsiUn.ExitCode)")
+      }
+
+      # Setup.exe silent install (/S /D=...) + API check (Uninstall key in HKCU is OfficeOpenSource or YomiOfficeOpenSource)
       $setupExe = Join-Path $OUT_WIN "$sub\$SLUG-$VER-$ed-Setup.exe"
-      $pSetup = Start-Process $setupExe -ArgumentList '/S' -Wait -PassThru
+      $pSetup = Start-Process $setupExe -ArgumentList @('/S', "/D=$localProg") -Wait -PassThru
       $setupInstalledExe = Join-Path $localProg 'OfficeOpenSource.exe'
       $noMsiFlag = -not (Test-Path (Join-Path $localProg 'installed_by_msi.txt'))
-      $regExists = Test-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\YomiOfficeOpenSource'
-      $setupApiOk = $false; $sDetail = "exit=$($pSetup.ExitCode) reg=$regExists noMsiFlag=$noMsiFlag"
+      $regKey = @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\YomiOfficeOpenSource', 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\OfficeOpenSource') | Where-Object { Test-Path $_ } | Select-Object -First 1
+      $regVer = if ($regKey) { (Get-ItemProperty $regKey -EA SilentlyContinue).DisplayVersion } else { '' }
+      $regExists = ($null -ne $regKey) -and ($regVer -eq $VER)
+      $setupApiOk = $false; $sDetail = "exit=$($pSetup.ExitCode) reg=$regExists($regVer) noMsiFlag=$noMsiFlag exe=$(Test-Path $setupInstalledExe)"
       if ($pSetup.ExitCode -eq 0 -and (Test-Path $setupInstalledExe)) {
         Remove-Item $appPortFile -Force -EA SilentlyContinue
         $ps = Start-Process $setupInstalledExe -PassThru
         $hs = Wait-MainWindow $ps 20
         $sp = Wait-ServerPort $appPortFile 20
         if ($sp -gt 0) {
-          Start-Sleep -Seconds 2
+          Start-Sleep -Seconds 3.5
           try {
             $is = Get-HttpJson "http://127.0.0.1:$sp/api/info"
             $setupApiOk = ($is.version -eq $VER -and $is.msi -eq $false)
@@ -366,7 +386,6 @@ try {
 
   if (-not $SkipFeatureTest) {
     Say '=== [2] Windows Feature & Web UI Verification ==='
-    # Test CLI --convert on one DOCX -> PDF and one XLSX -> PDF to verify embedded LibreOffice 24.8.7 engine
     $convIn = Join-Path $TESTS 'AGC_letter_to_Hai_Long_15_Sep.docx'
     $convOut = Join-Path $BLD 'conv_test.pdf'
     Remove-Item $convOut -Force -EA SilentlyContinue
@@ -374,29 +393,36 @@ try {
     $convSz = if (Test-Path $convOut) { (Get-Item $convOut).Length } else { 0 }
     LogResult 'Feature' 'LOK --convert DOCX->PDF' ($pc.ExitCode -eq 0 -and $convSz -gt 5000) ("exit=$($pc.ExitCode) pdf=$convSz B")
 
-    # Test web server endpoints & capture feature UI screens via installed Edge/Chrome pointing at live Launcher port OR OfficeOpenSource.exe
     Remove-Item $oosPortFile -Force -EA SilentlyContinue
     $pf = Start-Process $oosExe -PassThru
     $hf = Wait-MainWindow $pf 20
     $port = Wait-ServerPort $oosPortFile 20
     if ($port -gt 0) {
-      Start-Sleep -Seconds 2
+      Start-Sleep -Seconds 4.5
       Capture-Window $hf (Join-Path $SHOTS '04_yomi_home_screen.png')
       $scan = Post-HttpJson "http://127.0.0.1:$port/api/scan_office" '{}'
       LogResult 'Feature' 'POST /api/scan_office' ($scan.ok -and $scan.files.Count -ge 20) ("found=$($scan.files.Count) files")
 
-      $edge = @('C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe', 'C:\Program Files\Microsoft\Edge\Application\msedge.exe') | Where-Object { Test-Path $_ } | Select-Object -First 1
-      if ($edge) {
-        $edgeTmp = Join-Path $BLD 'edge_selftest'
-        New-Item -ItemType Directory -Force -Path $edgeTmp | Out-Null
-        $dom = & $edge --headless=new --disable-gpu "--user-data-dir=$edgeTmp" --virtual-time-budget=12000 --dump-dom "http://127.0.0.1:$port/#selftest" 2>$null
+      $browser = @('C:\Program Files\Google\Chrome\Application\chrome.exe', 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe') | Where-Object { Test-Path $_ } | Select-Object -First 1
+      if ($browser) {
+        $brTmp = Join-Path $BLD 'browser_selftest'
+        New-Item -ItemType Directory -Force -Path $brTmp | Out-Null
+        $dom = & $browser --headless=new --disable-gpu "--user-data-dir=$brTmp" --virtual-time-budget=14000 --dump-dom "http://127.0.0.1:$port/#selftest" 2>$null
         $domStr = ($dom -join "`n")
-        $stOk = ($domStr -match 'passed' -or $domStr -match 'OOSTEST')
-        LogResult 'Feature' 'Web #selftest via Edge headless' $stOk ("matched=" + $stOk)
-        foreach ($tab in @(@('devscan','05_ui_devscan.png'), @('pdf','06_ui_pdf.png'), @('mathtype','07_ui_mathtype.png'), @('scanner','08_ui_camscanner.png'), @('ai','09_ui_ai_freeclaude.png'))) {
+        $stOk = ($domStr -match 'OOSTEST|passed|đạt|49/')
+        LogResult 'Feature' 'Web #selftest via Chrome headless' $stOk ("browser=$(Split-Path -Leaf $browser) matched=$stOk")
+        foreach ($tab in @(
+          @('tool=devscan', '05_ui_devscan.png'),
+          @('new=pdf',      '06_ui_pdf.png'),
+          @('new=mathtype', '07_ui_mathtype.png'),
+          @('tool=scan',    '08_ui_camscanner.png'),
+          @('tool=ai',      '09_ui_ai_freeclaude.png')
+        )) {
           $shotOut = Join-Path $SHOTS $tab[1]
-          & $edge --headless=new --disable-gpu "--user-data-dir=$edgeTmp" --window-size=1366,860 --virtual-time-budget=4000 "--screenshot=$shotOut" "http://127.0.0.1:$port/#tool=$($tab[0])" 2>$null | Out-Null
-          LogResult 'Feature' "Screenshot #tool=$($tab[0])" (Test-Path $shotOut) $tab[1]
+          Remove-Item $shotOut -Force -EA SilentlyContinue
+          & $browser --headless=new --disable-gpu "--user-data-dir=$brTmp" --window-size=1366,860 --virtual-time-budget=5000 "--screenshot=$shotOut" "http://127.0.0.1:$port/#$($tab[0])" 2>$null | Out-Null
+          $okSh = (Test-Path $shotOut) -and ((Get-Item $shotOut).Length -gt 5000)
+          LogResult 'Feature' "Screenshot #$($tab[0])" $okSh $tab[1]
         }
       }
     }
@@ -423,37 +449,47 @@ try {
       $tag = "{0:D2}_{1}" -f $idx, $safe
 
       $msExe = $null; $msArgs = "`"$($tf.FullName)`""; $msProcName = $null
-      if ($ext -in @('.doc', '.docx', '.rtf', '.odt')) { $msExe = $MS_WORD; $msProcName = 'WINWORD'; $msArgs = "/q `"$($tf.FullName)`"" }
+      if ($ext -in @('.doc', '.docx', '.rtf', '.odt')) { $msExe = $MS_WORD; $msProcName = 'WINWORD'; $msArgs = "`"$($tf.FullName)`"" }
       elseif ($ext -in @('.xls', '.xlsx', '.xlsm', '.ods', '.csv')) { $msExe = $MS_EXCEL; $msProcName = 'EXCEL'; $msArgs = "/e `"$($tf.FullName)`"" }
       elseif ($ext -in @('.ppt', '.pptx', '.ppsx', '.odp')) { $msExe = $MS_PPT; $msProcName = 'POWERPNT'; $msArgs = "`"$($tf.FullName)`"" }
 
       Say ("[{0:D2}/{1:D2}] Testing {2} ({3:N0} KB)" -f $idx, $testFiles.Count, $tf.Name, ($tf.Length / 1KB))
 
-      # Launch Yomi-Office Native Engine
-      $waitSec = if ($tf.Length -gt 20MB) { 18 } elseif ($tf.Length -gt 5MB) { 9 } else { 5 }
+      # Wait for actual NativeDocForm window (not Splash "Đang mở ...")
+      $maxWait = if ($tf.Length -gt 20MB) { 45 } elseif ($tf.Length -gt 5MB) { 25 } else { 15 }
       $py = Start-Process $oosExe -ArgumentList "--native `"$($tf.FullName)`"" -PassThru
-      $hy = Wait-MainWindow $py 25
-      if ($hy -ne [IntPtr]::Zero) { Start-Sleep -Seconds $waitSec }
-      $yAlive = ($hy -ne [IntPtr]::Zero) -and (-not $py.HasExited)
+      $hy = Wait-DocWindow $py 'Yomi-Office Open Source' $maxWait
+      $py.Refresh()
+      $yAlive = ($hy -ne [IntPtr]::Zero) -and (-not $py.HasExited) -and ($py.MainWindowTitle -match 'Yomi-Office Open Source')
       $yShot = Join-Path $SHOTS "cmp_${tag}_yomi.png"
-      Capture-Window $hy $yShot
+      if ($yAlive) {
+        [WinQaNative]::MoveWindow($hy, 0, 0, 960, 1020, $true) | Out-Null
+        Start-Sleep -Milliseconds 1500
+        Capture-Window $hy $yShot
+      }
 
-      # Position Yomi window on left half and launch MS Office on right half for visual/video side-by-side
+      # Launch MS Office on right half and wait for loaded document window
       $mOk = $false
       $mShot = Join-Path $SHOTS "cmp_${tag}_msoffice.png"
       if ($msExe -and (Test-Path $msExe)) {
-        if ($hy -ne [IntPtr]::Zero) { [WinQaNative]::MoveWindow($hy, 0, 0, 960, 1020, $true) | Out-Null }
-        $pm = Start-Process $msExe -ArgumentList $msArgs -PassThru
-        Start-Sleep -Seconds $waitSec
-        $mp = Get-Process -Name $msProcName -EA SilentlyContinue | Where-Object { $beforeOffice -notcontains $_.Id -and $_.MainWindowHandle -ne [IntPtr]::Zero } | Select-Object -First 1
-        if ($mp) {
-          $hm = $mp.MainWindowHandle
+        Start-Process $msExe -ArgumentList $msArgs | Out-Null
+        $mp = $null; $hm = [IntPtr]::Zero
+        $mDeadline = (Get-Date).AddSeconds($maxWait)
+        while ((Get-Date) -lt $mDeadline) {
+          $cand = Get-Process -Name $msProcName -EA SilentlyContinue | Where-Object { $beforeOffice -notcontains $_.Id -and $_.MainWindowHandle -ne [IntPtr]::Zero -and $_.MainWindowTitle.Length -gt 0 } | Select-Object -First 1
+          if ($cand) {
+            $mp = $cand; $hm = $cand.MainWindowHandle
+            if ($cand.MainWindowTitle -notmatch '^(Word|Excel|PowerPoint|Document\d+)$') { break }
+          }
+          Start-Sleep -Milliseconds 400
+        }
+        if ($hm -ne [IntPtr]::Zero) {
+          Start-Sleep -Milliseconds 1800
           [WinQaNative]::MoveWindow($hm, 960, 0, 960, 1020, $true) | Out-Null
-          Start-Sleep -Milliseconds 800
+          if ($yAlive) { [WinQaNative]::ShowWindow($hy, 9) | Out-Null; [WinQaNative]::MoveWindow($hy, 0, 0, 960, 1020, $true) | Out-Null }
+          Start-Sleep -Milliseconds 600
           Capture-Window $hm $mShot
-          $mOk = $true
-        } else {
-          Capture-Screen $mShot
+          $mOk = (Test-Path $mShot) -and ((Get-Item $mShot).Length -gt 5000)
         }
       }
 
@@ -462,9 +498,9 @@ try {
         Make-SideBySide $yShot $mShot $pairShot "Yomi-Office 0.1.8: $($tf.Name)" "Microsoft Office 16: $($tf.Name)"
       }
 
-      LogResult 'Compare' $tf.Name ($yAlive -and (Test-Path $yShot)) ("yomi=$yAlive msOffice=$mOk size=$($tf.Length)")
+      LogResult 'Compare' $tf.Name ($yAlive -and (Test-Path $yShot)) ("yomi=$yAlive title=$($py.MainWindowTitle) msOffice=$mOk size=$($tf.Length)")
       Stop-Spawned $beforeOffice @('OfficeOpenSource', 'soffice.bin', 'WINWORD', 'EXCEL', 'POWERPNT')
-      Start-Sleep -Milliseconds 500
+      Start-Sleep -Milliseconds 600
     }
   }
 }
