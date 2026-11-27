@@ -22,8 +22,11 @@
   Bộ ứng dụng văn phòng mã nguồn mở, miễn phí, chạy <b>ngoại tuyến</b> trên <b>Android 6.0+</b> và <b>Windows 7+</b>:
   Word · Excel · PowerPoint · PDF · CamScanner · MathType · Trợ lý A.I
   <br>
-  <a href="https://yomihub-project.github.io/Yomi-Office-Open-Source/">Trang chủ</a> ·
-  <a href="https://yomihub-project.github.io/Yomi-Office-Open-Source/privacy.html">Chính sách quyền riêng tư</a>
+  🌐 <a href="https://yomihub-project.github.io/Yomi-Website/yomi-office/index.html">Trang Chủ</a> ·
+  <a href="https://yomihub-project.github.io/Yomi-Website/yomi-office/download.html">Tải Xuống</a> ·
+  <a href="https://yomihub-project.github.io/Yomi-Website/yomi-office/guide.html">Hướng Dẫn Sử Dụng</a> ·
+  <a href="https://yomihub-project.github.io/Yomi-Website/yomi-office/privacy.html">Chính Sách Quyền Riêng Tư</a> ·
+  <a href="https://yomihub-project.github.io/Yomi-Website/yomi-office/en/index.html">English</a>
 </p>
 
 ---
@@ -33,6 +36,7 @@
 - [Tính năng](#-tính-năng)
 - [Cài đặt](#-cài-đặt)
 - [Sử dụng](#-sử-dụng)
+- [Website](#-website)
 - [Kiểm thử](#-kiểm-thử)
 - [Công nghệ](#️-công-nghệ)
 - [Tác giả](#️-tác-giả)
@@ -77,12 +81,27 @@ Bấm **[⬇️ Tải về](https://github.com/YomiHub-Project/Yomi-Office-Open-
 | Windows 7/8.1 x64 | [tải](https://github.com/YomiHub-Project/Yomi-Office-Open-Source/releases/download/v0.1.8/Yomi-Office-Open-Source-0.1.8-Win7-8.1-x64-Setup.exe) | [tải](https://github.com/YomiHub-Project/Yomi-Office-Open-Source/releases/download/v0.1.8/Yomi-Office-Open-Source-0.1.8-Win7-8.1-x64.msi) | [tải](https://github.com/YomiHub-Project/Yomi-Office-Open-Source/releases/download/v0.1.8/Yomi-Office-Open-Source-0.1.8-Win7-8.1-x64-portable.zip) |
 | Windows 7/8.1 x86 | [tải](https://github.com/YomiHub-Project/Yomi-Office-Open-Source/releases/download/v0.1.8/Yomi-Office-Open-Source-0.1.8-Win7-8.1-x86-Setup.exe) | [tải](https://github.com/YomiHub-Project/Yomi-Office-Open-Source/releases/download/v0.1.8/Yomi-Office-Open-Source-0.1.8-Win7-8.1-x86.msi) | [tải](https://github.com/YomiHub-Project/Yomi-Office-Open-Source/releases/download/v0.1.8/Yomi-Office-Open-Source-0.1.8-Win7-8.1-x86-portable.zip) |
 
-Gói Microsoft Store `.appxbundle` (Windows 10 1809+ / 11): xem trang [Releases](https://github.com/YomiHub-Project/Yomi-Office-Open-Source/releases/latest).
+Gói `.appxbundle` (Windows 10 1809+ / 11): [tải tại đây](https://github.com/YomiHub-Project/Yomi-Office-Open-Source/releases/download/v0.1.8/Yomi-Office-Open-Source-0.1.8.appxbundle) — ký bằng chứng chỉ tự tạo, cần cài [`DevCert.cer`](https://github.com/YomiHub-Project/Yomi-Office-Open-Source/releases/download/v0.1.8/Yomi-Office-Open-Source-0.1.8-DevCert.cer) vào *Trusted People* trước.
+
+Hướng dẫn chọn bộ cài, dung lượng từng tệp và mã SHA-256: trang **[Tải Xuống](https://yomihub-project.github.io/Yomi-Website/yomi-office/download.html)**.
 
 ## 🎈 Sử dụng
 - Mở tệp từ trình quản lý tệp, email, Zalo… hoặc từ tab **Gần đây / Đã ghim / Trên thiết bị** trên màn hình chính.
 - **Tùy chọn → Cập nhật phần mềm**: kiểm tra và cài bản mới.
 - **Trợ lý A.I → ⚙️**: chọn dịch vụ, nhập khóa API (lưu trên máy) hoặc địa chỉ proxy Free Claude Code (mặc định `http://127.0.0.1:8082`).
+- Hướng dẫn đầy đủ từng tính năng (Word, Excel, PowerPoint, PDF & OCR, CamScanner, MathType, A.I, DeX…): **[Hướng Dẫn Sử Dụng](https://yomihub-project.github.io/Yomi-Website/yomi-office/guide.html)**.
+
+## 🌐 Website
+Website chính thức (song ngữ, nút **English / Tiếng Việt** chuyển qua lại giữa hai bản):
+
+| Trang | Tiếng Việt | English | WordPress (VI) | WordPress (EN) |
+|---|---|---|---|---|
+| Trang Chủ | [index.html](https://yomihub-project.github.io/Yomi-Website/yomi-office/index.html) | [en/index.html](https://yomihub-project.github.io/Yomi-Website/yomi-office/en/index.html) | [yomi-office](https://yomihubproject.wordpress.com/yomi-office/) | [yomi-office-en](https://yomihubproject.wordpress.com/yomi-office-en/) |
+| Tải Xuống | [download.html](https://yomihub-project.github.io/Yomi-Website/yomi-office/download.html) | [en/download.html](https://yomihub-project.github.io/Yomi-Website/yomi-office/en/download.html) | [tai-xuong](https://yomihubproject.wordpress.com/yomi-office/tai-xuong/) | [download](https://yomihubproject.wordpress.com/yomi-office-en/download/) |
+| Hướng Dẫn Sử Dụng | [guide.html](https://yomihub-project.github.io/Yomi-Website/yomi-office/guide.html) | [en/guide.html](https://yomihub-project.github.io/Yomi-Website/yomi-office/en/guide.html) | [huong-dan](https://yomihubproject.wordpress.com/yomi-office/huong-dan/) | [guide](https://yomihubproject.wordpress.com/yomi-office-en/guide/) |
+| Chính Sách Quyền Riêng Tư | [privacy.html](https://yomihub-project.github.io/Yomi-Website/yomi-office/privacy.html) | [en/privacy.html](https://yomihub-project.github.io/Yomi-Website/yomi-office/en/privacy.html) | [chinh-sach-quyen-rieng-tu](https://yomihubproject.wordpress.com/yomi-office/chinh-sach-quyen-rieng-tu/) | [privacy](https://yomihubproject.wordpress.com/yomi-office-en/privacy/) |
+
+Mã nguồn website: [YomiHub-Project/Yomi-Website](https://github.com/YomiHub-Project/Yomi-Website/tree/main/yomi-office).
 
 ## 🔧 Kiểm thử
 Mỗi bản phát hành được kiểm thử bằng bộ tự kiểm tra tích hợp (mở ứng dụng với `#selftest`, 49 mục: Word, Excel, PowerPoint, PDF, OCR, VBA, ODF, đám mây, A.I…) trên Android 6, Android 14, thiết bị thật Samsung Galaxy Note 9, và các bản Windows; tệp mẫu được so sánh với Microsoft Office.
